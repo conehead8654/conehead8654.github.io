@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ConeWorks</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+        h1 {
+            font-size: 3.5em;
+            text-shadow: 0 0 10px #00ffcc;
+            margin-bottom: 10px;
+        }
+        p {
+            font-size: 1.2em;
+            max-width: 600px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .login-container, .game-buttons, .settings-container {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            align-items: center;
+        }
+        .game-buttons { flex-direction: row; flex-wrap: wrap; }
+        input, button, select {
+            padding: 10px;
+            font-size: 1.1em;
+            border: none;
+            border-radius: 5px;
+        }
+        input, select {
+            width: 200px;
+            background: #fff;
+            color: #333;
+        }
+        button {
+            background: linear-gradient(to right, #ff6b6b, #ff8e53);
+            color: white;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+        button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+        }
+        canvas {
+            display: none;
+            border: 3px solid #00ffcc;
+            border-radius: 10px;
+            background: #000;
+        }
+        #ui {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 10;
+            font-size: 16px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 10px;
+            border-radius: 5px;
+        }
+        #publicChat {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            width: 300px;
+            height: 150px;
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 10px;
+            padding: 10px;
+            font-size: 14px;
+            overflow-y: auto;
+            display: none;
+        }
+        #publicChatInput {
+            width: 280px;
+            margin-top: 5px;
+        }
+        #chatBox {
+            position: absolute;
+            top: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 400px;
+            height: 300px;
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 10px;
+            padding: 10px;
+            display: none;
+            font-size: 14px;
+            overflow-y: auto;
+        }
+        #chatInput {
+            width: 380px;
+            margin-top: 5px;
+        }
+        #friendBox {
+            position: absolute;
+            top: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 250px;
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 10px;
+            padding: 10px;
+            display: none;
+            font-size: 14px;
+        }
+        #friendSearch, #serverSearch, #newServerName {
+            width: 220px;
+            margin-bottom: 5px;
+        }
+        #friendSuggestions, #serverSuggestions {
+            max-height: 100px;
+            overflow-y: auto;
+            background: #333;
+            border-radius: 5px;
+        }
+        .suggestion {
+            padding: 5px;
+            cursor: pointer;
+        }
+        .suggestion:hover {
+            background: #555;
+        }
+        #notification {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            background: #00ffcc;
+            color: #000;
+            padding: 10px;
+            border-radius: 5px;
+            display: none;
+            max-width: 300px;
+        }
+        #voteBox {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            padding: 20px;
+            border-radius: 10px;
+            display: none;
+            text-align: center;
+        }
+        #reportBox {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            padding: 20px;
+            border-radius: 10px;
+            display: none;
+            text-align: center;
+        }
+        .back-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            padding: 10px 20px;
+            background: #f44336;
+            color: white;
+        }
+        .back-btn:hover {
+            background: #da190b;
+        }
+    </style>
+</head>
+<body>
+    <div id="loginPage">
+        <h1>ConeWorks</h1>
+        <p>Sign in or create an account to brawl, chill, and moderate across schools!</p>
+        <div class="login-container">
+            <input id="username" type="text" placeholder="Username">
+            <input id="password" type="password" placeholder="Password">
+            <button onclick="login()">Login</button>
+            <button onclick="signup()">Sign Up</button>
+        </div>
+    </div>
+    <div id="homePage" style="display: none;">
+        <h1>ConeWorks</h1>
+        <p>Create or join epic servers to brawl or chill. Unblocked for Trinity Heights.</p>
+        <div class="game-buttons">
+            <button onclick="loadServerPage()">Join Server</button>
+            <button onclick="loadCreateServerPage()">Create Server</button>
+            <button onclick="toggleChatBox()">Chat & Friends</button>
+            <button onclick="loadSettingsPage()">Settings</button>
+        </div>
+    </div>
+    <div id="serverPage" style="display: none;">
+        <h1>Join a Server</h1>
+        <p>Search for a server or join a random one!</p>
+        <input id="serverSearch" type="text" placeholder="Search servers..." oninput="updateServerSuggestions()">
+        <select id="modeFilter">
+            <option value="all">All Modes</option>
+            <option value="fight">Fight</option>
+            <option value="chill">Chill</option>
+        </select>
+        <div id="serverSuggestions"></div>
+        <div class="game-buttons">
+            <button onclick="joinServer('random')">Join Random</button>
+            <button onclick="joinServer(document.getElementById('serverSearch').value)">Join Server</button>
+            <button onclick="showHome()">Back</button>
+        </div>
+    </div>
+    <div id="createServerPage" style="display: none;">
+        <h1>Create a Server</h1>
+        <p>Choose a name and mode for your server!</p>
+        <input id="newServerName" type="text" placeholder="Server Name">
+        <select id="newServerMode">
+            <option value="fight">Fight</option>
+            <option value="chill">Chill</option>
+        </select>
+        <div class="game-buttons">
+            <button onclick="createServer()">Create</button>
+            <button onclick="showHome()">Back</button>
+        </div>
+    </div>
+    <div id="settingsPage" style="display: none;">
+        <h1>Settings</h1>
+        <p>Customize your ConeWorks experience.</p>
+        <div class="settings-container">
+            <label for="defaultPOV">Default POV on Join:</label>
+            <select id="defaultPOV">
+                <option value="third">Third-Person</option>
+                <option value="first">First-Person</option>
+            </select>
+            <button onclick="saveSettings()">Save</button>
+            <button onclick="showHome()">Back</button>
+        </div>
+    </div>
+    <canvas id="canvas" width="800" height="600"></canvas>
+    <button id="backBtn" class="back-btn" onclick="leaveServer()" style="display: none;">Leave Server</button>
+    <div id="ui" style="display: none;"></div>
+    <div id="publicChat" style="display: none;">
+        <div id="publicChatMessages"></div>
+        <input id="publicChatInput" type="text" placeholder="Server chat..." onkeydown="if(event.key === 'Enter') sendPublicMessage()">
+    </div>
+    <div id="chatBox" style="display: none;">
+        <div id="chatMessages"></div>
+        <input id="chatInput" type="text" placeholder="Message friends..." onkeydown="if(event.key === 'Enter') sendMessage()">
+        <button onclick="toggleChatBox()">Close</button>
+    </div>
+    <div id="friendBox" style="display: none;">
+        <div>Friends</div>
+        <input id="friendSearch" type="text" placeholder="Search players..." oninput="updateFriendSuggestions()">
+        <div id="friendSuggestions"></div>
+        <div id="friendList"></div>
+        <div id="friendRequests"></div>
+        <button onclick="toggleFriendBox()">Close</button>
+    </div>
+    <div id="notification"></div>
+    <div id="voteBox" style="display: none;">
+        <h2>Vote for Next Map</h2>
+        <div id="voteOptions"></div>
+        <button onclick="closeVote()">Close</button>
+    </div>
+    <div id="reportBox" style="display: none;">
+        <h2>Report Player</h2>
+        <select id="reportPlayer"></select>
+        <button onclick="submitReport()">Report</button>
+        <button onclick="document.getElementById('reportBox').style.display='none'">Cancel</button>
+    </div>
+
+    <script>
+        // State
+        let currentGame = null;
+        let currentServer = null;
+        let serverOwner = null;
+        let username = null;
+        let accounts = JSON.parse(localStorage.getItem('coneWorksAccounts')) || {};
+        let friends = [];
+        let friendRequestsSent = [];
+        let friendRequestsReceived = [];
+        let messages = JSON.parse(localStorage.getItem('coneWorksMessages')) || [];
+        let publicMessages = [];
+        let servers = JSON.parse(localStorage.getItem('coneWorksServers')) || [
+            { name: 'TrinityBrawl', mode: 'fight', owner: 'Ninja123' },
+            { name: 'NeonArena', mode: 'fight', owner: 'ParkourPro' },
+            { name: 'StarFight', mode: 'fight', owner: 'BrawlMaster' },
+            { name: 'ConeChill', mode: 'chill', owner: 'SpeedyCone' }
+        ];
+        let players = {};
+        let map = 'Arena';
+        let mapVotes = { Arena: 0, Rooftop: 0, 'Space Station': 0 };
+        let mapTimer = 30 * 60 * 1000;
+        let lastMapSwitch = Date.now();
+        let firstPerson = false;
+        let defaultPOV = localStorage.getItem('coneWorksDefaultPOV') || 'third';
+        let yaw = 0, pitch = 0;
+        let serverMode = 'fight';
+        const canvas = document.getElementById('canvas');
+        const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+        if (!gl) alert('WebGL not supported. Try Chrome incognito.');
+        const ui = document.getElementById('ui');
+        const publicChat = document.getElementById('publicChat');
+        const publicChatMessages = document.getElementById('publicChatMessages');
+        const publicChatInput = document.getElementById('publicChatInput');
+        const chatBox = document.getElementById('chatBox');
+        const chatMessages = document.getElementById('chatMessages');
+        const chatInput = document.getElementById('chatInput');
+        const friendBox = document.getElementById('friendBox');
+        const friendSearch = document.getElementById('friendSearch');
+        const friendSuggestions = document.getElementById('friendSuggestions');
+        const friendList = document.getElementById('friendList');
+        const friendRequests = document.getElementById('friendRequests');
+        const notification = document.getElementById('notification');
+        const voteBox = document.getElementById('voteBox');
+        const voteOptions = document.getElementById('voteOptions');
+        const reportBox = document.getElementById('reportBox');
+        const reportPlayer = document.getElementById('reportPlayer');
+        let publicChatVisible = true;
+
+        // Login & Signup
+        function login() {
+            const user = document.getElementById('username').value.trim();
+            const pass = document.getElementById('password').value;
+            if (accounts[user] && accounts[user].password === pass) {
+                username = user;
+                friends = accounts[user].friends || [];
+                friendRequestsSent = accounts[user].requestsSent || [];
+                friendRequestsReceived = JSON.parse(localStorage.getItem('coneWorksRequestsReceived'))?.[user] || [];
+                document.getElementById('loginPage').style.display = 'none';
+                document.getElementById('homePage').style.display = 'block';
+                updateFriends();
+                updateChat();
+            } else {
+                alert('Invalid username or password!');
+            }
+        }
+
+        function signup() {
+            const user = document.getElementById('username').value.trim();
+            const pass = document.getElementById('password').value;
+            if (user && pass && !accounts[user] && user !== 'Conehead8654') {
+                accounts[user] = { password: pass, friends: [], requestsSent: [], wins: 0 };
+                localStorage.setItem('coneWorksAccounts', JSON.stringify(accounts));
+                username = user;
+                friends = [];
+                friendRequestsSent = [];
+                friendRequestsReceived = [];
+                document.getElementById('loginPage').style.display = 'none';
+                document.getElementById('homePage').style.display = 'block';
+                updateFriends();
+                updateChat();
+            } else if (user === 'Conehead8654') {
+                alert('Username "Conehead8654" is reserved!');
+            } else {
+                alert(accounts[user] ? 'Username taken!' : 'Enter a valid username and password!');
+            }
+        }
+
+        // Navigation
+        function showHome() {
+            currentGame = null;
+            currentServer = null;
+            serverOwner = null;
+            canvas.style.display = 'none';
+            ui.style.display = 'none';
+            publicChat.style.display = 'none';
+            chatBox.style.display = 'none';
+            friendBox.style.display = 'none';
+            voteBox.style.display = 'none';
+            reportBox.style.display = 'none';
+            document.getElementById('homePage').style.display = 'block';
+            document.getElementById('serverPage').style.display = 'none';
+            document.getElementById('createServerPage').style.display = 'none';
+            document.getElementById('settingsPage').style.display = 'none';
+            updateChat();
+        }
+
+        function loadServerPage() {
+            document.getElementById('homePage').style.display = 'none';
+            document.getElementById('serverPage').style.display = 'block';
+            updateServerSuggestions();
+        }
+
+        function loadCreateServerPage() {
+            document.getElementById('homePage').style.display = 'none';
+            document.getElementById('createServerPage').style.display = 'block';
+        }
+
+        function loadSettingsPage() {
+            document.getElementById('homePage').style.display = 'none';
+            document.getElementById('settingsPage').style.display = 'block';
+            document.getElementById('defaultPOV').value = defaultPOV;
+        }
+
+        function saveSettings() {
+            defaultPOV = document.getElementById('defaultPOV').value;
+            localStorage.setItem('coneWorksDefaultPOV', defaultPOV);
+            showHome();
+        }
+
+        // Chat & Friends
+        function toggleChatBox() {
+            chatBox.style.display = chatBox.style.display === 'none' ? 'block' : 'none';
+            friendBox.style.display = 'none';
+            updateChat();
+        }
+
+        function toggleFriendBox() {
+            friendBox.style.display = friendBox.style.display === 'none' ? 'block' : 'none';
+            chatBox.style.display = 'none';
+            updateFriends();
+        }
+
+        function updateFriendSuggestions() {
+            const query = friendSearch.value.toLowerCase().trim();
+            friendSuggestions.innerHTML = query ? Object.keys(accounts)
+                .filter(p => p.toLowerCase().includes(query) && p !== username && !friends.includes(p) && !friendRequestsSent.includes(p))
+                .map(p => `<div class="suggestion" onclick="friendSearch.value='${p}'; friendSuggestions.innerHTML=''; sendFriendRequest()">${p}</div>`)
+                .join('') : '';
+        }
+
+        function sendFriendRequest() {
+            const target = friendSearch.value.trim();
+            if (target && target !== username && accounts[target] && !friends.includes(target) && !friendRequestsSent.includes(target)) {
+                friendRequestsSent.push(target);
+                accounts[username].requestsSent = friendRequestsSent;
+                let received = JSON.parse(localStorage.getItem('coneWorksRequestsReceived')) || {};
+                received[target] = received[target] || [];
+                received[target].push({ from: username, to: target });
+                localStorage.setItem('coneWorksRequestsReceived', JSON.stringify(received));
+                localStorage.setItem('coneWorksAccounts', JSON.stringify(accounts));
+                friendSearch.value = '';
+                friendSuggestions.innerHTML = '';
+                updateFriends();
+                alert(`Friend request sent to ${target}!`);
+            } else {
+                alert('Player Not Found!');
+            }
+        }
+
+        function acceptFriend(from) {
+            friends.push(from);
+            accounts[username].friends = friends;
+            let received = JSON.parse(localStorage.getItem('coneWorksRequestsReceived')) || {};
+            received[username] = received[username]?.filter(r => r.from !== from) || [];
+            localStorage.setItem('coneWorksRequestsReceived', JSON.stringify(received));
+            localStorage.setItem('coneWorksAccounts', JSON.stringify(accounts));
+            updateFriends();
+        }
+
+        function rejectFriend(from) {
+            let received = JSON.parse(localStorage.getItem('coneWorksRequestsReceived')) || {};
+            received[username] = received[username]?.filter(r => r.from !== from) || [];
+            localStorage.setItem('coneWorksRequestsReceived', JSON.stringify(received));
+            updateFriends();
+        }
+
+        function removeFriend(friend) {
+            friends = friends.filter(f => f !== friend);
+            accounts[username].friends = friends;
+            localStorage.setItem('coneWorksAccounts', JSON.stringify(accounts));
+            updateFriends();
+        }
+
+        function sendMessage() {
+            const text = chatInput.value.trim();
+            if (text && friends.length) {
+                messages.push({ from: username, text, timestamp: Date.now() });
+                localStorage.setItem('coneWorksMessages', JSON.stringify(messages));
+                friends.forEach(f => {
+                    let received = JSON.parse(localStorage.getItem('coneWorksRequestsReceived')) || {};
+                    if (accounts[f]) {
+                        received[f] = received[f] || [];
+                        received[f].push({ from: username, message: text });
+                    }
+                    localStorage.setItem('coneWorksRequestsReceived', JSON.stringify(received));
+                });
+                chatInput.value = '';
+                updateChat();
+            }
+        }
+
+        function updateChat() {
+            let received = JSON.parse(localStorage.getItem('coneWorksRequestsReceived')) || {};
+            let unread = received[username]?.filter(r => r.message && friends.includes(r.from)) || [];
+            if (unread.length && chatBox.style.display !== 'block') {
+                notification.style.display = 'block';
+                notification.innerHTML = unread.map(r => `${r.from}: ${r.message}`).join('<br>');
+                setTimeout(() => notification.style.display = 'none', 5000);
+            }
+            chatMessages.innerHTML = messages
+                .filter(m => friends.includes(m.from) || m.from === username)
+                .sort((a, b) => b.timestamp - a.timestamp)
+                .map(m => `<div>${m.from}: ${m.text}</div>`)
+                .join('');
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function sendPublicMessage() {
+            const text = publicChatInput.value.trim();
+            if (text && currentServer) {
+                publicMessages.push({ from: username, text, server: currentServer });
+                publicChatInput.value = '';
+                updatePublicChat();
+            }
+        }
+
+        function updatePublicChat() {
+            publicChatMessages.innerHTML = publicMessages
+                .filter(m => m.server === currentServer)
+                .map(m => `<div>${m.from}: ${m.text}</div>`)
+                .join('');
+            publicChatMessages.scrollTop = publicChatMessages.scrollHeight;
+        }
+
+        // Server Management
+        function updateServerSuggestions() {
+            const query = document.getElementById('serverSearch').value.toLowerCase().trim();
+            const mode = document.getElementById('modeFilter').value;
+            document.getElementById('serverSuggestions').innerHTML = query ? servers
+                .filter(s => s.name.toLowerCase().includes(query) && (mode === 'all' || s.mode === mode))
+                .map(s => `<div class="suggestion" onclick="document.getElementById('serverSearch').value='${s.name}'; document.getElementById('serverSuggestions').innerHTML=''">${s.name} (${s.mode})</div>`)
+                .join('') : '';
+        }
+
+        function createServer() {
+            const serverName = document.getElementById('newServerName').value.trim();
+            const mode = document.getElementById('newServerMode').value;
+            if (serverName && !servers.some(s => s.name === serverName)) {
+                servers.push({ name: serverName, mode, owner: username });
+                localStorage.setItem('coneWorksServers', JSON.stringify(servers));
+                joinServer(serverName);
+            } else {
+                alert(serverName ? 'Server name taken!' : 'Enter a server name!');
+            }
+        }
+
+        function joinServer(serverName) {
+            if (serverName === 'random') {
+                const filteredServers = servers.filter(s => document.getElementById('modeFilter').value === 'all' || s.mode === document.getElementById('modeFilter').value);
+                serverName = filteredServers[Math.floor(Math.random() * filteredServers.length)]?.name;
+            }
+            const server = servers.find(s => s.name === serverName);
+            if (!server) {
+                alert('Server Not Found!');
+                return;
+            }
+            currentServer = serverName;
+            serverOwner = server.owner;
+            serverMode = server.mode;
+            currentGame = 'game';
+            firstPerson = defaultPOV === 'first';
+            document.getElementById('serverPage').style.display = 'none';
+            canvas.style.display = 'block';
+            ui.style.display = 'block';
+            publicChat.style.display = publicChatVisible ? 'block' : 'none';
+            initGame();
+            updatePublicChat();
+        }
+
+        function leaveServer() {
+            currentServer = null;
+            serverOwner = null;
+            currentGame = null;
+            serverMode = 'fight';
+            players = {};
+            canvas.style.display = 'none';
+            ui.style.display = 'none';
+            publicChat.style.display = 'none';
+            voteBox.style.display = 'none';
+            reportBox.style.display = 'none';
+            showHome();
+        }
+
+        // Voting
+        function startVote() {
+            voteBox.style.display = 'block';
+            voteOptions.innerHTML = `
+                <button onclick="submitVote('Arena')">Arena</button>
+                <button onclick="submitVote('Rooftop')">Rooftop</button>
+                <button onclick="submitVote('Space Station')">Space Station</button>
+            `;
+        }
+
+        function submitVote(mapName) {
+            mapVotes[mapName]++;
+            closeVote();
+        }
+
+        function closeVote() {
+            voteBox.style.display = 'none';
+            const maxVotes = Math.max(...Object.values(mapVotes));
+            const winningMaps = Object.keys(mapVotes).filter(m => mapVotes[m] === maxVotes);
+            map = winningMaps[Math.floor(Math.random() * winningMaps.length)];
+            mapVotes = { Arena: 0, Rooftop: 0, 'Space Station': 0 };
+            lastMapSwitch = Date.now();
+            initGame();
+        }
+
+        // Reporting
+        function openReportBox() {
+            reportBox.style.display = 'block';
+            reportPlayer.innerHTML = Object.keys(players)
+                .filter(p => p !== username)
+                .map(p => `<option value="${p}">${p}</option>`)
+                .join('');
+        }
+
+        function submitReport() {
+            const target = reportPlayer.value;
+            if (target && players[target]) {
+                if (username === 'Conehead8654' && username === serverOwner) {
+                    delete players[target];
+                    alert(`${target} has been banned from the server!`);
+                } else {
+                    alert(`Report submitted for ${target}.`);
+                }
+            }
+            reportBox.style.display = 'none';
+        }
+
+        // Input
+        let keys = {};
+        window.addEventListener('keydown', (e) => {
+            keys[e.key.toLowerCase()] = true;
+            if (currentGame === 'game' && e.key.toLowerCase() === 'c') {
+                publicChatVisible = !publicChatVisible;
+                publicChat.style.display = publicChatVisible ? 'block' : 'none';
+            }
+            if (currentGame === 'game' && e.key.toLowerCase() === 'o') {
+                firstPerson = !firstPerson;
+            }
+            if (currentGame === 'game' && e.key.toLowerCase() === 'r') {
+                openReportBox();
+            }
+        });
+        window.addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; });
+        canvas.addEventListener('click', () => canvas.requestPointerLock());
+        canvas.addEventListener('mousemove', (e) => {
+            if (currentGame === 'game' && document.pointerLockElement === canvas) {
+                yaw -= e.movementX * 0.002;
+                pitch -= e.movementY * 0.002;
+                pitch = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, pitch));
+            }
+        });
+
+        // Game
+        function initGame() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            gl.viewport(0, 0, canvas.width, canvas.height);
+            window.addEventListener('resize', () => {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+                gl.viewport(0, 0, canvas.width, canvas.height);
+            });
+
+            const vsSource = `
+                attribute vec4 aPosition; attribute vec3 aNormal; attribute vec4 aColor;
+                uniform mat4 uModelViewMatrix; uniform mat4 uProjectionMatrix;
+                varying vec3 vNormal; varying vec4 vColor;
+                void main() { gl_Position = uProjectionMatrix * uModelViewMatrix * aPosition; vNormal = aNormal; vColor = aColor; }
+            `;
+            const fsSource = `
+                precision mediump float; varying vec3 vNormal; varying vec4 vColor;
+                void main() {
+                    float light = max(0.0, dot(vNormal, vec3(0.0, 1.0, 0.0))) * 0.8 + 0.2;
+                    gl_FragColor = vColor * light;
+                }
+            `;
+
+            function loadShader(type, source) {
+                const shader = gl.createShader(type);
+                gl.shaderSource(shader, source);
+                gl.compileShader(shader);
+                return shader;
+            }
+            const shaderProgram = gl.createProgram();
+            gl.attachShader(shaderProgram, loadShader(gl.VERTEX_SHADER, vsSource));
+            gl.attachShader(shaderProgram, loadShader(gl.FRAGMENT_SHADER, fsSource));
+            gl.linkProgram(shaderProgram);
+            gl.useProgram(shaderProgram);
+
+            const positionLocation = gl.getAttribLocation(shaderProgram, 'aPosition');
+            const normalLocation = gl.getAttribLocation(shaderProgram, 'aNormal');
+            const colorLocation = gl.getAttribLocation(shaderProgram, 'aColor');
+            const modelViewMatrixLoc = gl.getUniformLocation(shaderProgram, 'uModelViewMatrix');
+            const projectionMatrixLoc = gl.getUniformLocation(shaderProgram, 'uProjectionMatrix');
+
+            players[username] = { x: 0, y: 2, z: 0, vx: 0, vy: 0, vz: 0, health: serverMode === 'fight' ? 100 : null, wins: accounts[username].wins || 0, color: [1, 0, 0, 1] };
+            for (let i = 1; i < 4; i++) {
+                if (!players['Bot' + i]) players['Bot' + i] = { x: i * 2 - 3, y: 2, z: i * 2 - 3, vx: 0, vy: 0, vz: 0, health: serverMode === 'fight' ? 100 : null, wins: 0, color: [0, i / 3, 1 - i / 3, 1] };
+            }
+
+            function gameUpdate() {
+                const speed = 0.1;
+                const gravity = serverMode === 'fight' ? 0.05 : 0.02;
+                const player = players[username];
+                if (keys['w'] || keys['arrowup']) { player.vx += Math.sin(yaw) * speed; player.vz += Math.cos(yaw) * speed; }
+                if (keys['s'] || keys['arrowdown']) { player.vx -= Math.sin(yaw) * speed; player.vz -= Math.cos(yaw) * speed; }
+                if (keys['a'] || keys['arrowleft']) { player.vx -= Math.cos(yaw) * speed; player.vz += Math.sin(yaw) * speed; }
+                if (keys['d'] || keys['arrowright']) { player.vx += Math.cos(yaw) * speed; player.vz -= Math.sin(yaw) * speed; }
+                if (keys[' '] && player.y <= 2) { player.vy = 0.3; }
+                player.vx *= 0.8;
+                player.vz *= 0.8;
+                player.vy -= gravity;
+                player.x += player.vx;
+                player.y += player.vy;
+                player.z += player.vz;
+                if (player.y < 2) { player.y = 2; player.vy = 0; }
+
+                if (serverMode === 'fight') {
+                    for (let p in players) {
+                        if (p !== username && keys['space'] && Math.hypot(player.x - players[p].x, player.z - players[p].z) < 2) {
+                            players[p].health -= 10;
+                            if (players[p].health <= 0) {
+                                players[p].x = Math.random() * 10 - 5;
+                                players[p].z = Math.random() * 10 - 5;
+                                players[p].health = 100;
+                                player.wins++;
+                                accounts[username].wins = player.wins;
+                                localStorage.setItem('coneWorksAccounts', JSON.stringify(accounts));
+                            }
+                        }
+                    }
+                }
+
+                if (Date.now() - lastMapSwitch > mapTimer) startVote();
+                requestAnimationFrame(gameUpdate);
+            }
+
+            function gameRender() {
+                gl.clearColor(map === 'Arena' ? 0.5 : map === 'Rooftop' ? 0.7 : 0.2, map === 'Rooftop' ? 0.8 : 0.5, map === 'Space Station' ? 0.2 : 1.0, 1.0);
+                gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+                gl.enable(gl.DEPTH_TEST);
+
+                const fov = Math.PI / 3;
+                const aspect = canvas.width / canvas.height;
+                const zNear = 0.1, zFar = 100;
+                const proj = new Float32Array([
+                    1 / (aspect * Math.tan(fov / 2)), 0, 0, 0,
+                    0, 1 / Math.tan(fov / 2), 0, 0,
+                    0, 0, -(zFar + zNear) / (zFar - zNear), -1,
+                    0, 0, -2 * zFar * zNear / (zFar - zNear), 0
+                ]);
+
+                const player = players[username];
+                const cameraOffset = firstPerson ? [0, 0, 0] : [0, 2, -5];
+                const cosP = Math.cos(pitch), sinP = Math.sin(pitch);
+                const cosY = Math.cos(yaw), sinY = Math.sin(yaw);
+                const modelView = new Float32Array([
+                    cosY, sinY * sinP, -sinY * cosP, 0,
+                    0, cosP, sinP, 0,
+                    sinY, -cosY * sinP, cosY * cosP, 0,
+                    -(player.x + cameraOffset[0] * cosY + cameraOffset[2] * sinY * cosP),
+                    -(player.y + cameraOffset[1] + cameraOffset[2] * sinP),
+                    -(player.z + cameraOffset[0] * sinY - cameraOffset[2] * cosY * cosP), 1
+                ]);
+
+                gl.uniformMatrix4fv(projectionMatrixLoc, false, proj);
+                gl.uniformMatrix4fv(modelViewMatrixLoc, false, modelView);
+
+                const positions = [
+                    -0.5, 0, -0.5, 0.5, 0, -0.5, 0.5, 1, -0.5, -0.5, 1, -0.5,
+                    -0.5, 0, 0.5, 0.5, 0, 0.5, 0.5, 1, 0.5, -0.5, 1, 0.5,
+                    -0.5, 0, -0.5, -0.5, 0, 0.5, -0.5, 1, 0.5, -0.5, 1, -0.5,
+                    0.5, 0, -0.5, 0.5, 0, 0.5, 0.5, 1, 0.5, 0.5, 1, -0.5,
+                    -0.5, 0, -0.5, 0.5, 0, -0.5, 0.5, 0, 0.5, -0.5, 0, 0.5,
+                    -0.5, 1, -0.5, 0.5, 1, -0.5, 0.5, 1, 0.5, -0.5, 1, 0.5
+                ];
+                const normals = [
+                    0, -1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0,
+                    0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0,
+                    -1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0,
+                    1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0,
+                    0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0, -1,
+                    0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1
+                ];
+                for (let p in players) {
+                    const player = players[p];
+                    const colors = Array(24).fill(0).flatMap(() => player.color);
+                    const positionBuffer = gl.createBuffer();
+                    gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+                    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions.map((v, i) => v + [player.x, player.y, player.z][i % 3])), gl.STATIC_DRAW);
+                    gl.vertexAttribPointer(positionLocation, 3, gl.FLOAT, false, 0, 0);
+                    gl.enableVertexAttribArray(positionLocation);
+                    const normalBuffer = gl.createBuffer();
+                    gl.bindBuffer(gl.ARRAY_BUFFER, normalBuffer);
+                    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(normals), gl.STATIC_DRAW);
+                    gl.vertexAttribPointer(normalLocation, 3, gl.FLOAT, false, 0, 0);
+                    gl.enableVertexAttribArray(normalLocation);
+                    const colorBuffer = gl.createBuffer();
+                    gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
+                    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
+                    gl.vertexAttribPointer(colorLocation, 4, gl.FLOAT, false, 0, 0);
+                    gl.enableVertexAttribArray(colorLocation);
+                    gl.drawArrays(gl.TRIANGLES, 0, positions.length / 3);
+                }
+
+                const groundPositions = [-10, 0, -10, 10, 0, -10, 10, 0, 10, -10, 0, 10];
+                const groundNormals = [0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0];
+                const groundColors = Array(12).fill(0).flatMap(() => [0.5, 0.5, 0.5, 1]);
+                const groundBuffer = gl.createBuffer();
+                gl.bindBuffer(gl.ARRAY_BUFFER, groundBuffer);
+                gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(groundPositions), gl.STATIC_DRAW);
+                gl.vertexAttribPointer(positionLocation, 3, gl.FLOAT, false, 0, 0);
+                gl.enableVertexAttribArray(positionLocation);
+                const groundNormalBuffer = gl.createBuffer();
+                gl.bindBuffer(gl.ARRAY_BUFFER, groundNormalBuffer);
+                gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(groundNormals), gl.STATIC_DRAW);
+                gl.vertexAttribPointer(normalLocation, 3, gl.FLOAT, false, 0, 0);
+                gl.enableVertexAttribArray(normalLocation);
+                const groundColorBuffer = gl.createBuffer();
+                gl.bindBuffer(gl.ARRAY_BUFFER, groundColorBuffer);
+                gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(groundColors), gl.STATIC_DRAW);
+                gl.vertexAttribPointer(colorLocation, 4, gl.FLOAT, false, 0, 0);
+                gl.enableVertexAttribArray(colorLocation);
+                gl.drawArrays(gl.TRIANGLES, 0, groundPositions.length / 3);
+
+                ui.innerHTML = `Server: ${currentServer} | Mode: ${serverMode} | Map: ${map} | Wins: ${players[username]?.wins || 0} | Press R to report`;
+                requestAnimationFrame(gameRender);
+            }
+
+            gameUpdate();
+            gameRender();
+        }
+
+        // Init
+  document.getElementById('defaultPOV').value = defaultPOV;
+    updateFriends();
+    updateChat();
+    if (!accounts['Conehead8654']) {
+        accounts['Conehead8654'] = { password: 'Di@d09202015', friends: [], requestsSent: [], wins: 0 };
+        localStorage.setItem('coneWorksAccounts', JSON.stringify(accounts));
+    }
+</script>
+</body>
+</html>

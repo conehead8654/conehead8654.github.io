@@ -494,7 +494,7 @@
     <input id="restoreInput" type="file" accept=".json" style="display: none;" onchange="handleRestore(event)" title="Restore backup file">
     <label for="restoreInput" style="display: none;">Restore Backup</label>
 
-    <script src="index.js?v=3.4">
+    <script>
         try {
             console.log('Script loaded successfully');
             let version = 3.4;
@@ -864,6 +864,9 @@
                         console.log('UI computed styles:', window.getComputedStyle(ui));
                         console.log('Parent styles:', window.getComputedStyle(ui.parentElement));
                         const buttons = ui.querySelectorAll('button');
+                        if (buttons.length === 0) {
+                            alert('UI buttons failed to render! Check console for styles.');
+                        }
                         buttons.forEach((btn, i) => {
                             console.log(`Button ${i + 1} computed styles:`, window.getComputedStyle(btn));
                         });

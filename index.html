@@ -73,23 +73,26 @@
             background: #000;
         }
         #ui {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            z-index: 1000;
-            font-size: 24px;
-            background: rgba(0, 0, 0, 0.8);
-            padding: 20px;
-            border-radius: 5px;
-            touch-action: auto;
+            position: absolute !important;
+            top: 10px !important;
+            left: 10px !important;
+            z-index: 3000 !important;
+            font-size: 24px !important;
+            background: rgba(0, 0, 0, 0.9) !important;
+            padding: 20px !important;
+            border-radius: 5px !important;
+            display: none !important;
+            visibility: visible !important;
+            touch-action: auto !important;
+            min-width: 200px !important;
         }
         #ui button {
-            margin: 10px;
-            padding: 20px;
-            font-size: 24px;
-            width: 180px;
-            text-align: center;
-            border-radius: 5px;
+            margin: 10px !important;
+            padding: 20px !important;
+            font-size: 24px !important;
+            width: 180px !important;
+            text-align: center !important;
+            border-radius: 5px !important;
         }
         #publicChat {
             position: absolute;
@@ -270,14 +273,14 @@
             border: none;
             border-radius: 5px;
             cursor: pointer;
-            z-index: 1000;
+            z-index: 3000;
         }
         #coneconDisplay {
             position: absolute;
             top: 10px;
             font-size: 20px;
             color: yellow;
-            z-index: 1000;
+            z-index: 3000;
         }
         #controlsBox {
             display: none;
@@ -303,7 +306,7 @@
     <button id="fullscreenBtn" onclick="toggleFullscreen()">Fullscreen</button>
     <div id="loginPage">
         <h1>ConeWorks</h1>
-        <div id="versionDisplay">Version 3.2</div>
+        <div id="versionDisplay">Version 3.3</div>
         <p>Sign in or create an account to brawl and chill!</p>
         <div class="login-container">
             <input id="username" type="text" placeholder="Username">
@@ -327,7 +330,7 @@
     <div id="homePage" style="display: none;">
         <div id="coneconDisplay">Conecons: 0</div>
         <h1>ConeWorks</h1>
-        <div id="versionDisplay">Version 3.2</div>
+        <div id="versionDisplay">Version 3.3</div>
         <p>Create or join epic servers to brawl or chill.</p>
         <div class="game-buttons">
             <button onclick="loadServerPage()">Join Server</button>
@@ -337,6 +340,7 @@
             <button onclick="togglePlayerList()">Player List</button>
             <button onclick="testMultiplayer()">Test Multiplayer</button>
             <button onclick="loadSettingsPage()">Settings</button>
+            <button onclick="testUI()">Test UI</button>
             <button id="reviewReportsBtn" style="display: none;" onclick="reviewReports()">Review Reports</button>
         </div>
         <p>Earn 1 Conecon per minute in-game to buy skins and weapons!</p>
@@ -473,23 +477,13 @@
         <div id="skinList"></div>
         <button onclick="document.getElementById('skinBox').style.display='none'">Close</button>
     </div>
-    <div id="deleteAccountBox" style="display: none;">
-        <h2>Delete Account</h2>
-        <p>Enter your username and password to confirm deletion.</p>
-        <input id="deleteUsername" type="text" placeholder="Username">
-        <input id="deletePassword" type="password" placeholder="Password">
-        <div class="game-buttons">
-            <button onclick="deleteAccount()">Confirm Delete</button>
-            <button onclick="document.getElementById('deleteAccountBox').style.display='none'">Cancel</button>
-        </div>
-    </div>
     <input id="restoreInput" type="file" accept=".json" style="display: none;" onchange="handleRestore(event)" title="Restore backup file">
     <label for="restoreInput" style="display: none;">Restore Backup</label>
 
     <script>
         try {
             console.log('Script loaded successfully');
-            let version = 3.2;
+            let version = 3.3;
             let username = null;
             let accounts = JSON.parse(localStorage.getItem('coneWorksAccounts')) || {};
             let servers = JSON.parse(localStorage.getItem('coneWorksServers')) || [];
@@ -516,7 +510,7 @@
             };
             const canvas = document.getElementById('canvas');
             const ctx = canvas.getContext('2d');
-            const ui = document.getElementById('ui');
+            let ui = document.getElementById('ui');
             const coneconDisplay = document.getElementById('coneconDisplay');
 
             function resetData() {
@@ -729,7 +723,6 @@
                         document.getElementById('backBtn').style.display = 'block';
                         document.getElementById('homeBtn').style.display = 'none';
                         document.getElementById('publicChat').style.display = 'block';
-                        ui.style.display = 'block';
                         startGame();
                         console.log('Joined server:', currentServer.name, 'Players:', currentServer.players.length);
                     } else {
@@ -765,16 +758,51 @@
                 }
             }
 
-            function startGame() {
+            function testUI() {
                 try {
-                    let player = { x: 400, y: 300, z: 0, speed: 5, jumping: false, jumpHeight: 50 };
-                    canvas.style.display = 'block';
+                    console.log('Testing UI rendering on home page');
+                    if (!ui) {
+                        ui = document.createElement('div');
+                        ui.id = 'ui';
+                        document.body.appendChild(ui);
+                        console.log('Created new #ui div');
+                    }
                     ui.style.display = 'block';
                     ui.style.position = 'absolute';
                     ui.style.top = '10px';
                     ui.style.left = '10px';
-                    ui.style.zIndex = '1000';
-                    console.log('Setting UI styles: display=block, position=absolute, top=10px, left=10px, zIndex=1000');
+                    ui.style.zIndex = '3000';
+                    ui.innerHTML = '<button>Test Button</button>';
+                    console.log('Test UI button rendered');
+                    setTimeout(() => {
+                        ui.style.display = 'none';
+                        console.log('Test UI hidden');
+                    }, 3000);
+                } catch (e) {
+                    console.error('Test UI error:', e);
+                    alert('Error testing UI. Check console.');
+                }
+            }
+
+            function startGame() {
+                try {
+                    console.log('Starting game');
+                    let player = { x: 400, y: 300, z: 0, speed: 5, jumping: false, jumpHeight: 50 };
+                    canvas.style.display = 'block';
+                    if (!ui) {
+                        console.log('UI element not found, creating new #ui div');
+                        ui = document.createElement('div');
+                        ui.id = 'ui';
+                        document.body.appendChild(ui);
+                    }
+                    console.log('UI element found or created:', ui);
+                    ui.style.display = 'block !important';
+                    ui.style.position = 'absolute !important';
+                    ui.style.top = '10px !important';
+                    ui.style.left = '10px !important';
+                    ui.style.zIndex = '3000 !important';
+                    ui.style.visibility = 'visible !important';
+                    console.log('Setting UI styles: display=block, position=absolute, top=10px, left=10px, zIndex=3000, visibility=visible');
                     try {
                         ui.innerHTML = `
                             <button onclick="openSkinShop()">Skin Shop</button>
@@ -786,7 +814,7 @@
                         console.log('UI buttons rendered: Skin Shop, Weapon Shop, Toggle POV, Report Player, Player List');
                     } catch (e) {
                         console.error('Error setting ui.innerHTML:', e);
-                        alert('Error rendering UI buttons. Check console.');
+                        alert('UI buttons failed to render. Check console for errors.');
                     }
                     updateShop();
                     updateSkinShop();
@@ -1384,7 +1412,6 @@
                     document.getElementById('backBtn').style.display = 'none';
                     document.getElementById('homeBtn').style.display = 'block';
                     document.getElementById('publicChat').style.display = 'block';
-                    ui.style.display = 'block';
                     startGame();
                     console.log('Started Test Multiplayer');
                 } catch (e) {

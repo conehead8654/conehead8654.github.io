@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Permissions-Policy" content="fullscreen=(self)">
     <title>ConeWorks</title>
     <style>
         body {
@@ -275,9 +276,10 @@
     </style>
 </head>
 <body>
+    <button id="fullscreenBtn" onclick="toggleFullscreen()">Fullscreen</button>
     <div id="loginPage">
         <h1>ConeWorks</h1>
-        <div id="versionDisplay">Version 1.9</div>
+        <div id="versionDisplay">Version 2.2</div>
         <p>Sign in or create an account to brawl and chill!</p>
         <div class="login-container">
             <input id="username" type="text" placeholder="Username">
@@ -294,7 +296,7 @@
                     <li><b>E</b>: Attack (Fight mode)</li>
                     <li><b>O</b>: Toggle POV (first/third-person)</li>
                     <li><b>C</b>: Toggle server chat</li>
-                    <li><b>R</b>: Report/ban player (Conehead8654 only)</li>
+                    <li><b>R</b>: Report/ban player (conehead8654 only)</li>
                     <li><b>P</b>: Open weapon shop</li>
                     <li><b>K</b>: Open skin shop</li>
                     <li><b>L</b>: Toggle player list</li>
@@ -305,7 +307,7 @@
     <div id="homePage" style="display: none;">
         <div id="coneconDisplay">Conecons: 0</div>
         <h1>ConeWorks</h1>
-        <div id="versionDisplay">Version 1.9</div>
+        <div id="versionDisplay">Version 2.2</div>
         <p>Create or join epic servers to brawl or chill.</p>
         <div class="game-buttons">
             <button onclick="loadServerPage()">Join Server</button>
@@ -400,9 +402,9 @@
         </table>
         <button onclick="togglePlayerList()">Close</button>
     </div>
-    <canvas id="canvas" width="800" height="600"></canvas>
-    <button id="fullscreenBtn" onclick="toggleFullscreen()" style="display: none;">Fullscreen</button>
+    <canvas id="canvas" width="800" height="600" allow="fullscreen"></canvas>
     <button id="backBtn" class="back-btn" onclick="leaveServer()" style="display: none;">Leave Server</button>
+    <button id="homeBtn" class="back-btn" onclick="showHome()" style="display: none;">Back to Home</button>
     <div id="ui" style="display: none;"></div>
     <div id="publicChat" style="display: none;">
         <div id="publicChatMessages"></div>
@@ -451,7 +453,7 @@
     <script>
         try {
             console.log('Script loaded successfully');
-            let version = 1.9;
+            let version = 2.2;
             let username = null;
             let accounts = JSON.parse(localStorage.getItem('coneWorksAccounts')) || {};
             let servers = [];
@@ -478,21 +480,22 @@
             const ui = document.getElementById('ui');
             const coneconDisplay = document.getElementById('coneconDisplay');
             let player = { x: 400, y: 300, z: 0, speed: 5, jumping: false, jumpHeight: 50 };
+            let isInTestMultiplayer = false;
 
             function resetData() {
                 localStorage.clear();
                 accounts = {};
-                accounts['Conehead8654'] = { password: 'Di@d09202015', friends: [], requestsSent: [], wins: 0, conecon: 100, equippedSkin: 'default-boy', equippedWeapon: 'fist' };
+                accounts['conehead8654'] = { password: 'Di@d09202015', friends: [], requestsSent: [], wins: 0, conecon: 100, equippedSkin: 'default-boy', equippedWeapon: 'fist' };
                 localStorage.setItem('coneWorksAccounts', JSON.stringify(accounts));
-                alert('Data reset! Try logging in.');
+                alert('Data reset! Try logging in with conehead8654.');
             }
 
             function login() {
                 try {
                     const user = document.getElementById('username').value.trim();
                     const pass = document.getElementById('password').value;
-                    if (!accounts['Conehead8654']) {
-                        accounts['Conehead8654'] = { password: 'Di@d09202015', friends: [], requestsSent: [], wins: 0, conecon: 100, equippedSkin: 'default-boy', equippedWeapon: 'fist' };
+                    if (!accounts['conehead8654']) {
+                        accounts['conehead8654'] = { password: 'Di@d09202015', friends: [], requestsSent: [], wins: 0, conecon: 100, equippedSkin: 'default-boy', equippedWeapon: 'fist' };
                         localStorage.setItem('coneWorksAccounts', JSON.stringify(accounts));
                     }
                     if (accounts[user] && accounts[user].password === pass) {
@@ -505,6 +508,7 @@
                         friendRequestsReceived = JSON.parse(localStorage.getItem('coneWorksRequestsReceived'))?.[user] || [];
                         document.getElementById('loginPage').style.display = 'none';
                         document.getElementById('homePage').style.display = 'block';
+                        document.getElementById('fullscreenBtn').style.display = 'block';
                         updateConeconDisplay();
                         console.log('Login successful:', user);
                     } else {
@@ -520,7 +524,7 @@
                 try {
                     const user = document.getElementById('username').value.trim();
                     const pass = document.getElementById('password').value;
-                    if (user && pass && !accounts[user] && user !== 'Conehead8654') {
+                    if (user && pass && !accounts[user] && user !== 'conehead8654') {
                         accounts[user] = { password: pass, friends: [], requestsSent: [], wins: 0, conecon: 0, equippedSkin: 'default-boy', equippedWeapon: 'fist' };
                         localStorage.setItem('coneWorksAccounts', JSON.stringify(accounts));
                         username = user;
@@ -532,6 +536,7 @@
                         friendRequestsReceived = [];
                         document.getElementById('loginPage').style.display = 'none';
                         document.getElementById('homePage').style.display = 'block';
+                        document.getElementById('fullscreenBtn').style.display = 'block';
                         updateConeconDisplay();
                         console.log('Signup successful:', user);
                     } else {
@@ -563,18 +568,31 @@
                 document.getElementById('serverPage').style.display = 'none';
                 document.getElementById('createServerPage').style.display = 'none';
                 document.getElementById('settingsPage').style.display = 'none';
+                document.getElementById('fullscreenBtn').style.display = 'block';
+                document.getElementById('backBtn').style.display = 'none';
+                document.getElementById('homeBtn').style.display = 'none';
+                document.getElementById('publicChat').style.display = 'none';
                 canvas.style.display = 'none';
+                isInTestMultiplayer = false;
             }
 
             function loadServerPage() {
                 document.getElementById('homePage').style.display = 'none';
                 document.getElementById('serverPage').style.display = 'block';
+                document.getElementById('fullscreenBtn').style.display = 'block';
                 updateServerList();
             }
 
             function loadCreateServerPage() {
                 document.getElementById('homePage').style.display = 'none';
                 document.getElementById('createServerPage').style.display = 'block';
+                document.getElementById('fullscreenBtn').style.display = 'block';
+            }
+
+            function loadSettingsPage() {
+                document.getElementById('homePage').style.display = 'none';
+                document.getElementById('settingsPage').style.display = 'block';
+                document.getElementById('fullscreenBtn').style.display = 'block';
             }
 
             function createServer() {
@@ -624,6 +642,9 @@
                     canvas.style.display = 'block';
                     document.getElementById('fullscreenBtn').style.display = 'block';
                     document.getElementById('backBtn').style.display = 'block';
+                    document.getElementById('homeBtn').style.display = 'none';
+                    document.getElementById('publicChat').style.display = 'block';
+                    isInTestMultiplayer = false;
                     startGame();
                 } else {
                     alert('Server not found!');
@@ -639,8 +660,9 @@
                 }
                 currentServer = null;
                 canvas.style.display = 'none';
-                document.getElementById('fullscreenBtn').style.display = 'none';
+                document.getElementById('fullscreenBtn').style.display = 'block';
                 document.getElementById('backBtn').style.display = 'none';
+                document.getElementById('publicChat').style.display = 'none';
                 showHome();
             }
 
@@ -677,15 +699,43 @@
                             }, 20);
                         }
                     }
+                    if (e.key === 'c') {
+                        document.getElementById('publicChat').style.display = document.getElementById('publicChat').style.display === 'none' ? 'block' : 'none';
+                        if (document.getElementById('publicChat').style.display === 'block') {
+                            document.getElementById('publicChatInput').focus();
+                        }
+                    }
                 });
                 gameLoop();
             }
 
             function toggleFullscreen() {
-                if (!document.fullscreenElement) {
-                    canvas.requestFullscreen();
-                } else {
-                    document.exitFullscreen();
+                try {
+                    if (!document.fullscreenEnabled) {
+                        alert('Fullscreen not allowed by browser settings. Check browser permissions or try another browser.');
+                        return;
+                    }
+                    if (!document.fullscreenElement) {
+                        if (canvas.style.display === 'block') {
+                            canvas.requestFullscreen().catch(e => {
+                                console.error('Fullscreen error:', e);
+                                alert('Failed to enter fullscreen. Check browser settings.');
+                            });
+                        } else {
+                            document.documentElement.requestFullscreen().catch(e => {
+                                console.error('Fullscreen error:', e);
+                                alert('Failed to enter fullscreen. Check browser settings.');
+                            });
+                        }
+                    } else {
+                        document.exitFullscreen().catch(e => {
+                            console.error('Exit fullscreen error:', e);
+                            alert('Failed to exit fullscreen. Check browser settings.');
+                        });
+                    }
+                } catch (e) {
+                    console.error('Fullscreen toggle error:', e);
+                    alert('Error toggling fullscreen. Check console.');
                 }
             }
 
@@ -762,7 +812,7 @@
 
             function sendPublicMessage() {
                 const msg = document.getElementById('publicChatInput').value.trim();
-                if (msg && currentServer) {
+                if (msg && (currentServer || isInTestMultiplayer)) {
                     publicMessages.push({ from: username, text: msg, time: new Date().toISOString() });
                     document.getElementById('publicChatInput').value = '';
                     updatePublicChat();
@@ -777,6 +827,7 @@
             function updatePublicChat() {
                 const publicChatMessages = document.getElementById('publicChatMessages');
                 publicChatMessages.innerHTML = publicMessages.map(m => `<div>${m.from}: ${m.text} (${new Date(m.time).toLocaleTimeString()})</div>`).join('');
+                publicChatMessages.scrollTop = publicChatMessages.scrollHeight;
             }
 
             function saveSettings() {
@@ -849,6 +900,7 @@
                     document.getElementById('deleteAccountBox').style.display = 'none';
                     document.getElementById('settingsPage').style.display = 'none';
                     document.getElementById('loginPage').style.display = 'block';
+                    document.getElementById('fullscreenBtn').style.display = 'block';
                     alert('Account deleted!');
                 } else {
                     alert('Invalid username or password!');
@@ -857,20 +909,27 @@
 
             function showDeleteAccount() {
                 document.getElementById('deleteAccountBox').style.display = 'block';
+                document.getElementById('fullscreenBtn').style.display = 'block';
             }
 
             function testMultiplayer() {
-                canvas.style.display = 'block';
+                isInTestMultiplayer = true;
                 document.getElementById('homePage').style.display = 'none';
+                canvas.style.display = 'block';
+                document.getElementById('fullscreenBtn').style.display = 'block';
+                document.getElementById('backBtn').style.display = 'none';
+                document.getElementById('homeBtn').style.display = 'block';
+                document.getElementById('publicChat').style.display = 'block';
                 startGame();
             }
 
             // Initialize
-            if (!accounts['Conehead8654']) {
-                accounts['Conehead8654'] = { password: 'Di@d09202015', friends: [], requestsSent: [], wins: 0, conecon: 100, equippedSkin: 'default-boy', equippedWeapon: 'fist' };
+            if (!accounts['conehead8654']) {
+                accounts['conehead8654'] = { password: 'Di@d09202015', friends: [], requestsSent: [], wins: 0, conecon: 100, equippedSkin: 'default-boy', equippedWeapon: 'fist' };
                 localStorage.setItem('coneWorksAccounts', JSON.stringify(accounts));
             }
             document.getElementById('versionDisplay').textContent = `Version ${version}`;
+            document.getElementById('fullscreenBtn').style.display = 'block';
             updateConeconDisplay();
         } catch (e) {
             console.error('Script initialization error:', e);

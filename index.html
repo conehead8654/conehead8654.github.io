@@ -76,16 +76,18 @@
             position: absolute;
             top: 10px;
             left: 10px;
-            z-index: 10;
+            z-index: 1000;
             font-size: 16px;
             background: rgba(0, 0, 0, 0.8);
-            padding: 10px;
+            padding: 15px;
             border-radius: 5px;
         }
         #ui button {
-            margin: 5px;
-            padding: 8px;
-            font-size: 14px;
+            margin: 8px;
+            padding: 12px;
+            font-size: 16px;
+            width: 120px;
+            text-align: center;
         }
         #publicChat {
             position: absolute;
@@ -198,6 +200,20 @@
             display: none;
             text-align: center;
         }
+        #reviewReportsBox {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            padding: 20px;
+            border-radius: 10px;
+            display: none;
+            text-align: center;
+            max-height: 500px;
+            overflow-y: auto;
+            width: 400px;
+        }
         #shopBox {
             position: absolute;
             top: 50%;
@@ -252,7 +268,7 @@
             border: none;
             border-radius: 5px;
             cursor: pointer;
-            z-index: 10;
+            z-index: 1000;
         }
         #coneconDisplay {
             position: absolute;
@@ -284,7 +300,7 @@
     <button id="fullscreenBtn" onclick="toggleFullscreen()">Fullscreen</button>
     <div id="loginPage">
         <h1>ConeWorks</h1>
-        <div id="versionDisplay">Version 2.9</div>
+        <div id="versionDisplay">Version 3.0</div>
         <p>Sign in or create an account to brawl and chill!</p>
         <div class="login-container">
             <input id="username" type="text" placeholder="Username">
@@ -308,7 +324,7 @@
     <div id="homePage" style="display: none;">
         <div id="coneconDisplay">Conecons: 0</div>
         <h1>ConeWorks</h1>
-        <div id="versionDisplay">Version 2.9</div>
+        <div id="versionDisplay">Version 3.0</div>
         <p>Create or join epic servers to brawl or chill.</p>
         <div class="game-buttons">
             <button onclick="loadServerPage()">Join Server</button>
@@ -318,6 +334,7 @@
             <button onclick="togglePlayerList()">Player List</button>
             <button onclick="testMultiplayer()">Test Multiplayer</button>
             <button onclick="loadSettingsPage()">Settings</button>
+            <button id="reviewReportsBtn" style="display: none;" onclick="reviewReports()">Review Reports</button>
         </div>
         <p>Earn 1 Conecon per minute in-game to buy skins and weapons!</p>
     </div>
@@ -438,6 +455,11 @@
         <button onclick="submitReport()">Report</button>
         <button onclick="document.getElementById('reportBox').style.display='none'">Cancel</button>
     </div>
+    <div id="reviewReportsBox" style="display: none;">
+        <h2>Review Reports</h2>
+        <div id="reportList"></div>
+        <button onclick="document.getElementById('reviewReportsBox').style.display='none'">Close</button>
+    </div>
     <div id="shopBox" style="display: none;">
         <h2>Weapons Shop</h2>
         <div id="weaponList"></div>
@@ -448,16 +470,28 @@
         <div id="skinList"></div>
         <button onclick="document.getElementById('skinBox').style.display='none'">Close</button>
     </div>
+    <div id="deleteAccountBox" style="display: none;">
+        <h2>Delete Account</h2>
+        <p>Enter your username and password to confirm deletion.</p>
+        <input id="deleteUsername" type="text" placeholder="Username">
+        <input id="deletePassword" type="password" placeholder="Password">
+        <div class="game-buttons">
+            <button onclick="deleteAccount()">Confirm Delete</button>
+            <button onclick="document.getElementById('deleteAccountBox').style.display='none'">Cancel</button>
+        </div>
+    </div>
     <input id="restoreInput" type="file" accept=".json" style="display: none;" onchange="handleRestore(event)" title="Restore backup file">
     <label for="restoreInput" style="display: none;">Restore Backup</label>
 
     <script>
         try {
             console.log('Script loaded successfully');
-            let version = 2.9;
+            let version = 3.0;
             let username = null;
             let accounts = JSON.parse(localStorage.getItem('coneWorksAccounts')) || {};
             let servers = JSON.parse(localStorage.getItem('coneWorksServers')) || [];
+            let reports = JSON.parse(localStorage.getItem('coneWorksReports')) || [];
+            let bannedPlayers = JSON.parse(localStorage.getItem('coneWorksBannedPlayers')) || [];
             let currentServer = null;
             let conecon = 0;
             let equippedSkin = 'default-boy';
@@ -481,15 +515,18 @@
             const ctx = canvas.getContext('2d');
             const ui = document.getElementById('ui');
             const coneconDisplay = document.getElementById('coneconDisplay');
-            let player = { x: 400, y: 300, z: 0, speed: 5, jumping: false, jumpHeight: 50 };
 
             function resetData() {
                 localStorage.clear();
                 accounts = {};
                 accounts['conehead8654'] = { password: 'Di@d09202015', friends: [], requestsSent: [], wins: 0, conecon: 100, equippedSkin: 'default-boy', equippedWeapon: 'fist' };
                 servers = [];
+                reports = [];
+                bannedPlayers = [];
                 localStorage.setItem('coneWorksAccounts', JSON.stringify(accounts));
                 localStorage.setItem('coneWorksServers', JSON.stringify(servers));
+                localStorage.setItem('coneWorksReports', JSON.stringify(reports));
+                localStorage.setItem('coneWorksBannedPlayers', JSON.stringify(bannedPlayers));
                 alert('Data reset! Try logging in with conehead8654.');
                 console.log('Data reset');
             }
@@ -511,6 +548,7 @@
                         document.getElementById('loginPage').style.display = 'none';
                         document.getElementById('homePage').style.display = 'block';
                         document.getElementById('fullscreenBtn').style.display = 'block';
+                        document.getElementById('reviewReportsBtn').style.display = username.toLowerCase() === 'conehead8654' ? 'block' : 'none';
                         updateConeconDisplay();
                         updateFriendList();
                         console.log('Login successful:', matchedUser);
@@ -541,6 +579,7 @@
                         document.getElementById('loginPage').style.display = 'none';
                         document.getElementById('homePage').style.display = 'block';
                         document.getElementById('fullscreenBtn').style.display = 'block';
+                        document.getElementById('reviewReportsBtn').style.display = 'none';
                         updateConeconDisplay();
                         console.log('Signup successful:', user);
                     } else {
@@ -578,6 +617,7 @@
                 document.getElementById('publicChat').style.display = 'none';
                 canvas.style.display = 'none';
                 ui.style.display = 'none';
+                document.getElementById('reviewReportsBtn').style.display = username && username.toLowerCase() === 'conehead8654' ? 'block' : 'none';
                 updateFriendList();
                 console.log('Returned to home page');
             }
@@ -661,6 +701,11 @@
 
             function joinServer(name) {
                 try {
+                    if (bannedPlayers.includes(username)) {
+                        alert('You are banned!');
+                        console.log('Join attempt blocked: user banned', username);
+                        return;
+                    }
                     if (name === 'random') {
                         if (servers.length === 0) {
                             alert('No servers available!');
@@ -718,16 +763,17 @@
 
             function startGame() {
                 try {
-                    player = { x: 400, y: 300, z: 0, speed: 5, jumping: false, jumpHeight: 50 };
+                    let player = { x: 400, y: 300, z: 0, speed: 5, jumping: false, jumpHeight: 50 };
                     canvas.style.display = 'block';
                     ui.style.display = 'block';
                     ui.innerHTML = `
                         <button onclick="document.getElementById('skinBox').style.display='block'">Skin Shop</button>
                         <button onclick="document.getElementById('shopBox').style.display='block'">Weapon Shop</button>
                         <button onclick="togglePOV()">Toggle POV</button>
-                        ${username === 'conehead8654' ? '<button onclick="document.getElementById(\'reportBox\').style.display=\'block\'">Report Player</button>' : ''}
+                        <button onclick="document.getElementById('reportBox').style.display='block'; updateReportPlayerList()">Report Player</button>
                         <button onclick="togglePlayerList()">Player List</button>
                     `;
+                    console.log('UI buttons rendered');
                     function gameLoop() {
                         ctx.clearRect(0, 0, canvas.width, canvas.height);
                         ctx.fillStyle = 'green';
@@ -802,10 +848,132 @@
                         }
                     });
                     gameLoop();
+                    updateReportPlayerList();
                     console.log('Game started');
                 } catch (e) {
                     console.error('Start game error:', e);
                     alert('Error starting game. Check console.');
+                }
+            }
+
+            function updateReportPlayerList() {
+                try {
+                    const reportPlayer = document.getElementById('reportPlayer');
+                    reportPlayer.innerHTML = '';
+                    const players = currentServer ? currentServer.players.filter(p => p !== username) : Object.keys(accounts).filter(u => u !== username);
+                    players.forEach(p => {
+                        const option = document.createElement('option');
+                        option.value = p;
+                        option.textContent = p;
+                        reportPlayer.appendChild(option);
+                    });
+                    console.log('Updated report player list:', players.length, 'players');
+                } catch (e) {
+                    console.error('Update report player list error:', e);
+                    alert('Error updating report player list. Check console.');
+                }
+            }
+
+            function submitReport() {
+                try {
+                    const target = document.getElementById('reportPlayer').value;
+                    if (!target || target === username) {
+                        alert('Invalid player selected!');
+                        return;
+                    }
+                    const targetLogs = [...publicMessages, ...messages]
+                        .filter(m => m.from === target && new Date(m.time) <= Date.now())
+                        .map(m => `${m.from}: ${m.text} (${new Date(m.time).toLocaleTimeString()}) [${m.from === target ? 'Public' : 'Friend'}]`);
+                    if (username.toLowerCase() === 'conehead8654') {
+                        bannedPlayers.push(target);
+                        if (currentServer) {
+                            currentServer.players = currentServer.players.filter(p => p !== target);
+                            if (currentServer.players.length === 0) {
+                                servers = servers.filter(s => s.name !== currentServer.name);
+                            }
+                        }
+                        servers.forEach(s => s.players = s.players.filter(p => p !== target));
+                        localStorage.setItem('coneWorksBannedPlayers', JSON.stringify(bannedPlayers));
+                        localStorage.setItem('coneWorksServers', JSON.stringify(servers));
+                        alert(`Player ${target} banned from all servers!\nChat Logs:\n${targetLogs.join('\n') || 'No logs found'}`);
+                        console.log('Banned player:', target);
+                    } else {
+                        reports.push({ reporter: username, target, logs: targetLogs, time: new Date().toISOString() });
+                        localStorage.setItem('coneWorksReports', JSON.stringify(reports));
+                        alert(`Report sent for ${target}! Admin will review.`);
+                        console.log('Report submitted:', { reporter: username, target });
+                    }
+                    document.getElementById('reportBox').style.display = 'none';
+                } catch (e) {
+                    console.error('Submit report error:', e);
+                    alert('Error submitting report. Check console.');
+                }
+            }
+
+            function reviewReports() {
+                try {
+                    if (username.toLowerCase() !== 'conehead8654') {
+                        alert('Only conehead8654 can review reports!');
+                        return;
+                    }
+                    const reportList = document.getElementById('reportList');
+                    reportList.innerHTML = '';
+                    reports.forEach((r, index) => {
+                        const div = document.createElement('div');
+                        div.style.marginBottom = '10px';
+                        div.innerHTML = `
+                            <p>Reporter: ${r.reporter}</p>
+                            <p>Target: ${r.target}</p>
+                            <p>Time: ${new Date(r.time).toLocaleString()}</p>
+                            <p>Logs:</p>
+                            <div>${r.logs.join('<br>') || 'No logs found'}</div>
+                            <button onclick="banPlayer(${index})">Ban</button>
+                            <button onclick="ignoreReport(${index})">Ignore</button>
+                        `;
+                        reportList.appendChild(div);
+                    });
+                    document.getElementById('reviewReportsBox').style.display = 'block';
+                    console.log('Opened review reports');
+                } catch (e) {
+                    console.error('Review reports error:', e);
+                    alert('Error reviewing reports. Check console.');
+                }
+            }
+
+            function banPlayer(reportIndex) {
+                try {
+                    const report = reports[reportIndex];
+                    bannedPlayers.push(report.target);
+                    if (currentServer) {
+                        currentServer.players = currentServer.players.filter(p => p !== report.target);
+                        if (currentServer.players.length === 0) {
+                            servers = servers.filter(s => s.name !== currentServer.name);
+                        }
+                    }
+                    servers.forEach(s => s.players = s.players.filter(p => p !== report.target));
+                    reports.splice(reportIndex, 1);
+                    localStorage.setItem('coneWorksBannedPlayers', JSON.stringify(bannedPlayers));
+                    localStorage.setItem('coneWorksReports', JSON.stringify(reports));
+                    localStorage.setItem('coneWorksServers', JSON.stringify(servers));
+                    alert(`Player ${report.target} banned from all servers!`);
+                    console.log('Banned player from report:', report.target);
+                    reviewReports();
+                } catch (e) {
+                    console.error('Ban player error:', e);
+                    alert('Error banning player. Check console.');
+                }
+            }
+
+            function ignoreReport(reportIndex) {
+                try {
+                    reports.splice(reportIndex, 1);
+                    localStorage.setItem('coneWorksReports', JSON.stringify(reports));
+                    alert('Report ignored.');
+                    console.log('Ignored report:', reportIndex);
+                    reviewReports();
+                } catch (e) {
+                    console.error('Ignore report error:', e);
+                    alert('Error ignoring report. Check console.');
                 }
             }
 
@@ -1021,6 +1189,8 @@
                     accounts: localStorage.getItem('coneWorksAccounts'),
                     messages: localStorage.getItem('coneWorksMessages'),
                     servers: localStorage.getItem('coneWorksServers'),
+                    reports: localStorage.getItem('coneWorksReports'),
+                    bannedPlayers: localStorage.getItem('coneWorksBannedPlayers'),
                     settings: {
                         pov: localStorage.getItem('coneWorksDefaultPOV'),
                         sensitivity: localStorage.getItem('coneWorksMouseSensitivity'),
@@ -1051,6 +1221,8 @@
                             if (data.accounts) localStorage.setItem('coneWorksAccounts', data.accounts);
                             if (data.messages) localStorage.setItem('coneWorksMessages', data.messages);
                             if (data.servers) localStorage.setItem('coneWorksServers', data.servers);
+                            if (data.reports) localStorage.setItem('coneWorksReports', data.reports);
+                            if (data.bannedPlayers) localStorage.setItem('coneWorksBannedPlayers', data.bannedPlayers);
                             if (data.settings) {
                                 if (data.settings.pov) localStorage.setItem('coneWorksDefaultPOV', data.settings.pov);
                                 if (data.settings.sensitivity) localStorage.setItem('coneWorksMouseSensitivity', data.settings.sensitivity);
@@ -1059,6 +1231,8 @@
                             accounts = JSON.parse(localStorage.getItem('coneWorksAccounts')) || {};
                             messages = JSON.parse(localStorage.getItem('coneWorksMessages')) || [];
                             servers = JSON.parse(localStorage.getItem('coneWorksServers')) || [];
+                            reports = JSON.parse(localStorage.getItem('coneWorksReports')) || [];
+                            bannedPlayers = JSON.parse(localStorage.getItem('coneWorksBannedPlayers')) || [];
                             alert('Data restored! Try logging in.');
                             console.log('Data restored');
                         } catch (e) {
@@ -1115,22 +1289,6 @@
                 } catch (e) {
                     console.error('Test Multiplayer error:', e);
                     alert('Error starting Test Multiplayer. Check console.');
-                }
-            }
-
-            function submitReport() {
-                try {
-                    if (username === 'conehead8654') {
-                        const reportedPlayer = document.getElementById('reportPlayer').value;
-                        alert(`Reported ${reportedPlayer}`);
-                        console.log('Reported player:', reportedPlayer);
-                        document.getElementById('reportBox').style.display = 'none';
-                    } else {
-                        alert('Only conehead8654 can report players!');
-                    }
-                } catch (e) {
-                    console.error('Submit report error:', e);
-                    alert('Error submitting report. Check console.');
                 }
             }
 

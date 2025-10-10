@@ -279,7 +279,7 @@
     <button id="fullscreenBtn" onclick="toggleFullscreen()">Fullscreen</button>
     <div id="loginPage">
         <h1>ConeWorks</h1>
-        <div id="versionDisplay">Version 2.2</div>
+        <div id="versionDisplay">Version 2.3</div>
         <p>Sign in or create an account to brawl and chill!</p>
         <div class="login-container">
             <input id="username" type="text" placeholder="Username">
@@ -307,7 +307,7 @@
     <div id="homePage" style="display: none;">
         <div id="coneconDisplay">Conecons: 0</div>
         <h1>ConeWorks</h1>
-        <div id="versionDisplay">Version 2.2</div>
+        <div id="versionDisplay">Version 2.3</div>
         <p>Create or join epic servers to brawl or chill.</p>
         <div class="game-buttons">
             <button onclick="loadServerPage()">Join Server</button>
@@ -453,7 +453,7 @@
     <script>
         try {
             console.log('Script loaded successfully');
-            let version = 2.2;
+            let version = 2.3;
             let username = null;
             let accounts = JSON.parse(localStorage.getItem('coneWorksAccounts')) || {};
             let servers = [];
@@ -480,6 +480,7 @@
             const ui = document.getElementById('ui');
             const coneconDisplay = document.getElementById('coneconDisplay');
             let player = { x: 400, y: 300, z: 0, speed: 5, jumping: false, jumpHeight: 50 };
+
             let isInTestMultiplayer = false;
 
             function resetData() {
@@ -494,23 +495,21 @@
                 try {
                     const user = document.getElementById('username').value.trim();
                     const pass = document.getElementById('password').value;
-                    if (!accounts['conehead8654']) {
-                        accounts['conehead8654'] = { password: 'Di@d09202015', friends: [], requestsSent: [], wins: 0, conecon: 100, equippedSkin: 'default-boy', equippedWeapon: 'fist' };
-                        localStorage.setItem('coneWorksAccounts', JSON.stringify(accounts));
-                    }
-                    if (accounts[user] && accounts[user].password === pass) {
-                        username = user;
-                        conecon = accounts[user].conecon || 0;
-                        equippedSkin = accounts[user].equippedSkin || 'default-boy';
-                        equippedWeapon = accounts[user].equippedWeapon || 'fist';
-                        friends = accounts[user].friends || [];
-                        friendRequestsSent = accounts[user].requestsSent || [];
-                        friendRequestsReceived = JSON.parse(localStorage.getItem('coneWorksRequestsReceived'))?.[user] || [];
+                    const userLower = user.toLowerCase();
+                    let matchedUser = Object.keys(accounts).find(u => u.toLowerCase() === userLower);
+                    if (matchedUser && accounts[matchedUser].password === pass) {
+                        username = matchedUser;
+                        conecon = accounts[matchedUser].conecon || 0;
+                        equippedSkin = accounts[matchedUser].equippedSkin || 'default-boy';
+                        equippedWeapon = accounts[matchedUser].equippedWeapon || 'fist';
+                        friends = accounts[matchedUser].friends || [];
+                        friendRequestsSent = accounts[matchedUser].requestsSent || [];
+                        friendRequestsReceived = JSON.parse(localStorage.getItem('coneWorksRequestsReceived'))?.[matchedUser] || [];
                         document.getElementById('loginPage').style.display = 'none';
                         document.getElementById('homePage').style.display = 'block';
                         document.getElementById('fullscreenBtn').style.display = 'block';
                         updateConeconDisplay();
-                        console.log('Login successful:', user);
+                        console.log('Login successful:', matchedUser);
                     } else {
                         alert('Invalid username or password!');
                     }
@@ -524,7 +523,8 @@
                 try {
                     const user = document.getElementById('username').value.trim();
                     const pass = document.getElementById('password').value;
-                    if (user && pass && !accounts[user] && user !== 'conehead8654') {
+                    const userLower = user.toLowerCase();
+                    if (user && pass && !Object.keys(accounts).some(u => u.toLowerCase() === userLower) && userLower !== 'conehead8654') {
                         accounts[user] = { password: pass, friends: [], requestsSent: [], wins: 0, conecon: 0, equippedSkin: 'default-boy', equippedWeapon: 'fist' };
                         localStorage.setItem('coneWorksAccounts', JSON.stringify(accounts));
                         username = user;
@@ -540,7 +540,7 @@
                         updateConeconDisplay();
                         console.log('Signup successful:', user);
                     } else {
-                        alert(accounts[user] ? 'Username taken!' : 'Invalid username/password or reserved name!');
+                        alert(Object.keys(accounts).some(u => u.toLowerCase() === userLower) ? 'Username taken!' : 'Invalid username/password or reserved name!');
                     }
                 } catch (e) {
                     console.error('Signup error:', e);
@@ -677,32 +677,39 @@
                     ctx.fillStyle = 'white';
                     ctx.font = '12px Arial';
                     ctx.fillText(username, player.x, player.y - player.z - 10);
+                    if (!player.jumping && player.y !== 300) {
+                        player.y = 300;
+                        player.z = 0;
+                    }
                     requestAnimationFrame(gameLoop);
                 }
                 document.addEventListener('keydown', e => {
-                    if (e.key === 'w') player.y -= player.speed;
-                    if (e.key === 's') player.y += player.speed;
-                    if (e.key === 'a') player.x -= player.speed;
-                    if (e.key === 'd') player.x += player.speed;
-                    if (e.key === ' ') {
-                        if (!player.jumping) {
-                            player.jumping = true;
-                            let jump = 0;
-                            const jumpInterval = setInterval(() => {
-                                jump += 5;
-                                player.z = Math.sin(jump / player.jumpHeight * Math.PI) * player.jumpHeight;
-                                if (jump >= player.jumpHeight * 2) {
-                                    player.z = 0;
-                                    player.jumping = false;
-                                    clearInterval(jumpInterval);
-                                }
-                            }, 20);
+                    if (document.activeElement !== document.getElementById('publicChatInput')) {
+                        if (e.key === 'w') player.y = Math.max(300, player.y - player.speed);
+                        if (e.key === 's') player.y = Math.max(300, player.y + player.speed);
+                        if (e.key === 'a') player.x = Math.max(0, player.x - player.speed);
+                        if (e.key === 'd') player.x = Math.min(800, player.x + player.speed);
+                        if (e.key === ' ') {
+                            if (!player.jumping) {
+                                player.jumping = true;
+                                let jump = 0;
+                                const jumpInterval = setInterval(() => {
+                                    jump += 5;
+                                    player.z = Math.sin(jump / player.jumpHeight * Math.PI) * player.jumpHeight;
+                                    if (jump >= player.jumpHeight * 2) {
+                                        player.z = 0;
+                                        player.jumping = false;
+                                        player.y = 300;
+                                        clearInterval(jumpInterval);
+                                    }
+                                }, 20);
+                            }
                         }
-                    }
-                    if (e.key === 'c') {
-                        document.getElementById('publicChat').style.display = document.getElementById('publicChat').style.display === 'none' ? 'block' : 'none';
-                        if (document.getElementById('publicChat').style.display === 'block') {
-                            document.getElementById('publicChatInput').focus();
+                        if (e.key === 'c') {
+                            document.getElementById('publicChat').style.display = document.getElementById('publicChat').style.display === 'none' ? 'block' : 'none';
+                            if (document.getElementById('publicChat').style.display === 'block') {
+                                document.getElementById('publicChatInput').focus();
+                            }
                         }
                     }
                 });
@@ -788,7 +795,7 @@
             function updatePlayerList() {
                 const tbody = document.getElementById('playerList');
                 tbody.innerHTML = '';
-                Object.keys(accounts).forEach(u => {
+                Object.keys(accounts).filter(u => u !== username).forEach(u => {
                     const row = document.createElement('tr');
                     row.innerHTML = `<td>${u}</td><td>${accounts[u].wins || 0}</td><td>${accounts[u].conecon || 0}</td><td><button onclick="sendFriendRequestTo('${u}')">Add Friend</button></td>`;
                     tbody.appendChild(row);
@@ -893,8 +900,10 @@
             function deleteAccount() {
                 const user = document.getElementById('deleteUsername').value.trim();
                 const pass = document.getElementById('deletePassword').value;
-                if (user === username && accounts[user] && accounts[user].password === pass) {
-                    delete accounts[user];
+                const userLower = user.toLowerCase();
+                const matchedUser = Object.keys(accounts).find(u => u.toLowerCase() === userLower);
+                if (matchedUser && matchedUser === username && accounts[matchedUser].password === pass) {
+                    delete accounts[matchedUser];
                     localStorage.setItem('coneWorksAccounts', JSON.stringify(accounts));
                     username = null;
                     document.getElementById('deleteAccountBox').style.display = 'none';

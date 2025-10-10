@@ -82,6 +82,11 @@
             padding: 10px;
             border-radius: 5px;
         }
+        #ui button {
+            margin: 5px;
+            padding: 8px;
+            font-size: 14px;
+        }
         #publicChat {
             position: absolute;
             bottom: 10px;
@@ -279,7 +284,7 @@
     <button id="fullscreenBtn" onclick="toggleFullscreen()">Fullscreen</button>
     <div id="loginPage">
         <h1>ConeWorks</h1>
-        <div id="versionDisplay">Version 2.8</div>
+        <div id="versionDisplay">Version 2.9</div>
         <p>Sign in or create an account to brawl and chill!</p>
         <div class="login-container">
             <input id="username" type="text" placeholder="Username">
@@ -294,12 +299,8 @@
                     <li><b>WASD/Arrow Keys</b>: Move (camera-relative)</li>
                     <li><b>Space</b>: Jump</li>
                     <li><b>E</b>: Attack (Fight mode)</li>
-                    <li><b>O</b>: Toggle POV (first/third-person)</li>
                     <li><b>C</b>: Toggle server chat</li>
-                    <li><b>R</b>: Report/ban player (conehead8654 only)</li>
-                    <li><b>P</b>: Open weapon shop</li>
-                    <li><b>K</b>: Open skin shop</li>
-                    <li><b>L</b>: Toggle player list</li>
+                    <li><b>UI Buttons</b>: Open Skin Shop, Weapon Shop, Player List, Toggle POV, Report Player</li>
                 </ul>
             </div>
         </div>
@@ -307,7 +308,7 @@
     <div id="homePage" style="display: none;">
         <div id="coneconDisplay">Conecons: 0</div>
         <h1>ConeWorks</h1>
-        <div id="versionDisplay">Version 2.8</div>
+        <div id="versionDisplay">Version 2.9</div>
         <p>Create or join epic servers to brawl or chill.</p>
         <div class="game-buttons">
             <button onclick="loadServerPage()">Join Server</button>
@@ -453,7 +454,7 @@
     <script>
         try {
             console.log('Script loaded successfully');
-            let version = 2.8;
+            let version = 2.9;
             let username = null;
             let accounts = JSON.parse(localStorage.getItem('coneWorksAccounts')) || {};
             let servers = JSON.parse(localStorage.getItem('coneWorksServers')) || [];
@@ -466,6 +467,7 @@
             let friendRequestsReceived = [];
             let messages = JSON.parse(localStorage.getItem('coneWorksMessages')) || [];
             let publicMessages = [];
+            let pov = 'third';
             let skins = {
                 'default-boy': { cost: 0, color: [1, 0, 0, 1] },
                 'default-girl': { cost: 0, color: [1, 0.5, 0.5, 1] },
@@ -575,6 +577,7 @@
                 document.getElementById('homeBtn').style.display = 'none';
                 document.getElementById('publicChat').style.display = 'none';
                 canvas.style.display = 'none';
+                ui.style.display = 'none';
                 updateFriendList();
                 console.log('Returned to home page');
             }
@@ -704,6 +707,7 @@
                     document.getElementById('fullscreenBtn').style.display = 'block';
                     document.getElementById('backBtn').style.display = 'none';
                     document.getElementById('publicChat').style.display = 'none';
+                    ui.style.display = 'none';
                     showHome();
                     console.log('Left server');
                 } catch (e) {
@@ -716,6 +720,14 @@
                 try {
                     player = { x: 400, y: 300, z: 0, speed: 5, jumping: false, jumpHeight: 50 };
                     canvas.style.display = 'block';
+                    ui.style.display = 'block';
+                    ui.innerHTML = `
+                        <button onclick="document.getElementById('skinBox').style.display='block'">Skin Shop</button>
+                        <button onclick="document.getElementById('shopBox').style.display='block'">Weapon Shop</button>
+                        <button onclick="togglePOV()">Toggle POV</button>
+                        ${username === 'conehead8654' ? '<button onclick="document.getElementById(\'reportBox\').style.display=\'block\'">Report Player</button>' : ''}
+                        <button onclick="togglePlayerList()">Player List</button>
+                    `;
                     function gameLoop() {
                         ctx.clearRect(0, 0, canvas.width, canvas.height);
                         ctx.fillStyle = 'green';
@@ -749,7 +761,8 @@
                         requestAnimationFrame(gameLoop);
                     }
                     document.addEventListener('keydown', e => {
-                        if (document.activeElement !== document.getElementById('publicChatInput')) {
+                        if (document.activeElement !== document.getElementById('publicChatInput') && 
+                            document.activeElement !== document.getElementById('chatInput')) {
                             if (e.key === 'w' || e.key === 'ArrowUp') {
                                 player.y = Math.max(285, player.y - player.speed);
                             }
@@ -794,6 +807,11 @@
                     console.error('Start game error:', e);
                     alert('Error starting game. Check console.');
                 }
+            }
+
+            function togglePOV() {
+                pov = pov === 'third' ? 'first' : 'third';
+                console.log('Toggled POV to:', pov);
             }
 
             function toggleFullscreen() {
@@ -1098,6 +1116,26 @@
                     console.error('Test Multiplayer error:', e);
                     alert('Error starting Test Multiplayer. Check console.');
                 }
+            }
+
+            function submitReport() {
+                try {
+                    if (username === 'conehead8654') {
+                        const reportedPlayer = document.getElementById('reportPlayer').value;
+                        alert(`Reported ${reportedPlayer}`);
+                        console.log('Reported player:', reportedPlayer);
+                        document.getElementById('reportBox').style.display = 'none';
+                    } else {
+                        alert('Only conehead8654 can report players!');
+                    }
+                } catch (e) {
+                    console.error('Submit report error:', e);
+                    alert('Error submitting report. Check console.');
+                }
+            }
+
+            function closeVote() {
+                document.getElementById('voteBox').style.display = 'none';
             }
 
             // Initialize

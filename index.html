@@ -28,6 +28,11 @@
             text-align: center;
             margin-bottom: 20px;
         }
+        #versionDisplay {
+            font-size: 1em;
+            color: #00ffcc;
+            margin-bottom: 20px;
+        }
         .login-container, .game-buttons, .settings-container {
             display: flex;
             flex-direction: column;
@@ -269,7 +274,8 @@
 <body>
     <div id="loginPage">
         <h1>ConeWorks</h1>
-        <p>Sign in or create an account to brawl, chill, and moderate across schools!</p>
+        <div id="versionDisplay"></div>
+        <p>Sign in or create an account to brawl and chill!</p>
         <div class="login-container">
             <input id="username" type="text" placeholder="Username">
             <input id="password" type="password" placeholder="Password">
@@ -295,6 +301,7 @@
     <div id="homePage" style="display: none;">
         <div id="coneconDisplay"></div>
         <h1>ConeWorks</h1>
+        <div id="versionDisplay"></div>
         <p>Create or join epic servers to brawl or chill.</p>
         <div class="game-buttons">
             <button onclick="loadServerPage()">Join Server</button>
@@ -310,14 +317,22 @@
     <div id="serverPage" style="display: none;">
         <h1>Join a Server</h1>
         <p>Search for a server or join a random one!</p>
-        <input id="serverSearch" type="text" placeholder="Search servers..." oninput="updateServerSuggestions()">
+        <input id="serverSearch" type="text" placeholder="Search servers..." oninput="updateServerSuggestions(); updateServerList()">
         <label for="modeFilter">Filter Mode:</label>
-        <select id="modeFilter" aria-label="Filter servers by game mode">
+        <select id="modeFilter" aria-label="Filter servers by game mode" onchange="updateServerSuggestions(); updateServerList()">
             <option value="all">All Modes</option>
             <option value="fight">Fight</option>
             <option value="chill">Chill</option>
         </select>
         <div id="serverSuggestions"></div>
+        <div id="serverList">
+            <table>
+                <thead>
+                    <tr><th>Name</th><th>Mode</th><th>Players</th><th>Action</th></tr>
+                </thead>
+                <tbody id="serverTableBody"></tbody>
+            </table>
+        </div>
         <div class="game-buttons">
             <button onclick="joinServer('random')">Join Random</button>
             <button onclick="joinServer(document.getElementById('serverSearch').value)">Join Server</button>
@@ -426,10 +441,15 @@
         <div id="skinList"></div>
         <button onclick="document.getElementById('skinBox').style.display='none'">Close</button>
     </div>
-    <input id="restoreInput" type="file" accept=".json" style="display: none;" onchange="handleRestore(event)">
+    <input id="restoreInput" type="file" accept=".json" style="display: none;" onchange="handleRestore(event)" title="Restore backup file">
+    <label for="restoreInput" style="display: none;">Restore Backup</label>
 
     <script>
         // State
+        let version = localStorage.getItem('coneWorksVersion') ? parseFloat(localStorage.getItem('coneWorksVersion')) : 1.9;
+        localStorage.setItem('coneWorksVersion', version);
+        document.querySelectorAll('#versionDisplay').forEach(el => el.textContent = `Version ${version.toFixed(1)}`);
+        localStorage.removeItem('coneWorksServers');
         let currentGame = null;
         let currentServer = null;
         let serverOwner = null;
@@ -440,12 +460,7 @@
         let friendRequestsReceived = [];
         let messages = JSON.parse(localStorage.getItem('coneWorksMessages')) || [];
         let publicMessages = [];
-        let servers = JSON.parse(localStorage.getItem('coneWorksServers')) || [
-            { name: 'TrinityBrawl', mode: 'fight', owner: 'Ninja123' },
-            { name: 'NeonArena', mode: 'fight', owner: 'ParkourPro' },
-            { name: 'StarFight', mode: 'fight', owner: 'BrawlMaster' },
-            { name: 'ConeChill', mode: 'chill', owner: 'SpeedyCone' }
-        ];
+        let servers = [];
         let players = {};
         let map = 'Arena';
         let mapVotes = { Arena: 0, Rooftop: 0, 'Space Station': 0 };
@@ -497,6 +512,8 @@
         const friendRequests = document.getElementById('friendRequests');
         const playerListBox = document.getElementById('playerListBox');
         const playerList = document.getElementById('playerList');
+        const serverList = document.getElementById('serverList');
+        const serverTableBody = document.getElementById('serverTableBody');
         const notification = document.getElementById('notification');
         const voteBox = document.getElementById('voteBox');
         const voteOptions = document.getElementById('voteOptions');
@@ -640,386 +657,4 @@
                         messages = JSON.parse(localStorage.getItem('coneWorksMessages')) || [];
                         servers = JSON.parse(localStorage.getItem('coneWorksServers')) || servers;
                         defaultPOV = localStorage.getItem('coneWorksDefaultPOV') || 'third';
-                        mouseSensitivity = parseFloat(localStorage.getItem('coneWorksMouseSensitivity')) || 0.002;
-                        currencyDisplay = localStorage.getItem('coneWorksCurrencyDisplay') || 'top-left';
-                        if (username) {
-                            friends = accounts[username].friends || [];
-                            friendRequestsSent = accounts[username].requestsSent || [];
-                            friendRequestsReceived = JSON.parse(localStorage.getItem('coneWorksRequestsReceived'))?.[username] || [];
-                            conecon = accounts[username].conecon || 0;
-                            equippedSkin = accounts[username].equippedSkin || 'default-boy';
-                            equippedWeapon = accounts[username].equippedWeapon || 'fist';
-                        }
-                        updateFriends();
-                        updateChat();
-                        updateConeconDisplay();
-                        updatePlayerList();
-                        alert('Data restored successfully!');
-                    } catch (e) {
-                        alert('Error restoring data: Invalid file format!');
-                    }
-                };
-                reader.readAsText(file);
-            }
-        }
-
-        // Conecon Display
-        function updateConeconDisplay() {
-            coneconDisplay.style.left = currencyDisplay === 'top-left' ? '10px' : '';
-            coneconDisplay.style.right = currencyDisplay === 'top-right' ? '10px' : '';
-            coneconDisplay.textContent = `Conecon: ${conecon}`;
-        }
-
-        // Controls
-        function toggleControls() {
-            const controlsBox = document.getElementById('controlsBox');
-            controlsBox.style.display = controlsBox.style.display === 'none' ? 'block' : 'none';
-        }
-
-        // Player List
-        function togglePlayerList() {
-            playerListBox.style.display = playerListBox.style.display === 'none' ? 'block' : 'none';
-            chatBox.style.display = 'none';
-            friendBox.style.display = 'none';
-            updatePlayerList();
-        }
-
-        function updatePlayerList() {
-            const playersData = Object.keys(accounts)
-                .map(user => ({
-                    username: user,
-                    wins: accounts[user].wins || 0,
-                    conecon: accounts[user].conecon || 0
-                }))
-                .sort((a, b) => b.wins - a.wins);
-            playerList.innerHTML = playersData
-                .map(p => `
-                    <tr>
-                        <td>${p.username}</td>
-                        <td>${p.wins}</td>
-                        <td>${p.conecon}</td>
-                        <td>
-                            ${p.username !== username && !friends.includes(p.username) && !friendRequestsSent.includes(p.username)
-                                ? `<button onclick="sendFriendRequestFromList('${p.username}')">Friend</button>`
-                                : p.username === username ? 'You' : 'Friended'}
-                        </td>
-                    </tr>
-                `)
-                .join('');
-        }
-
-        function sendFriendRequestFromList(target) {
-            if (target && target !== username && accounts[target] && !friends.includes(target) && !friendRequestsSent.includes(target)) {
-                friendRequestsSent.push(target);
-                accounts[username].requestsSent = friendRequestsSent;
-                let received = JSON.parse(localStorage.getItem('coneWorksRequestsReceived')) || {};
-                received[target] = received[target] || [];
-                received[target].push({ from: username, to: target });
-                localStorage.setItem('coneWorksRequestsReceived', JSON.stringify(received));
-                localStorage.setItem('coneWorksAccounts', JSON.stringify(accounts));
-                updatePlayerList();
-                updateFriends();
-                alert(`Friend request sent to ${target}!`);
-            } else {
-                alert('Cannot send friend request!');
-            }
-        }
-
-        // Friends
-        function updateFriends() {
-            friendList.innerHTML = friends.length
-                ? friends.map(f => `<div>${f} <button onclick="removeFriend('${f}')">Remove</button></div>`).join('')
-                : 'No friends yet!';
-            friendRequests.innerHTML = friendRequestsReceived.length
-                ? friendRequestsReceived.map(r => `<div>${r.from} <button onclick="acceptFriend('${r.from}')">Accept</button> <button onclick="rejectFriend('${r.from}')">Reject</button></div>`).join('')
-                : 'No friend requests!';
-        }
-
-        function updateFriendSuggestions() {
-            const query = friendSearch && friendSearch.value ? friendSearch.value.toLowerCase().trim() : '';
-            friendSuggestions.innerHTML = query ? Object.keys(accounts)
-                .filter(p => p.toLowerCase().includes(query) && p !== username && !friends.includes(p) && !friendRequestsSent.includes(p))
-                .map(p => `<div class="suggestion" onclick="friendSearch.value='${p}'; friendSuggestions.innerHTML=''">${p}</div>`)
-                .join('') : '';
-        }
-
-        function sendFriendRequest() {
-            const target = friendSearch && friendSearch.value ? friendSearch.value.trim() : '';
-            if (target && target !== username && accounts[target] && !friends.includes(target) && !friendRequestsSent.includes(target)) {
-                friendRequestsSent.push(target);
-                accounts[username].requestsSent = friendRequestsSent;
-                let received = JSON.parse(localStorage.getItem('coneWorksRequestsReceived')) || {};
-                received[target] = received[target] || [];
-                received[target].push({ from: username, to: target });
-                localStorage.setItem('coneWorksRequestsReceived', JSON.stringify(received));
-                localStorage.setItem('coneWorksAccounts', JSON.stringify(accounts));
-                friendSearch.value = '';
-                friendSuggestions.innerHTML = '';
-                updateFriends();
-                updatePlayerList();
-                alert(`Friend request sent to ${target}!`);
-            } else {
-                alert('Player Not Found!');
-            }
-        }
-
-        function acceptFriend(from) {
-            friends.push(from);
-            accounts[username].friends = friends;
-            let received = JSON.parse(localStorage.getItem('coneWorksRequestsReceived')) || {};
-            received[username] = received[username]?.filter(r => r.from !== from) || [];
-            localStorage.setItem('coneWorksRequestsReceived', JSON.stringify(received));
-            localStorage.setItem('coneWorksAccounts', JSON.stringify(accounts));
-            updateFriends();
-            updatePlayerList();
-        }
-
-        function rejectFriend(from) {
-            let received = JSON.parse(localStorage.getItem('coneWorksRequestsReceived')) || {};
-            received[username] = received[username]?.filter(r => r.from !== from) || [];
-            localStorage.setItem('coneWorksRequestsReceived', JSON.stringify(received));
-            updateFriends();
-            updatePlayerList();
-        }
-
-        function removeFriend(friend) {
-            friends = friends.filter(f => f !== friend);
-            accounts[username].friends = friends;
-            localStorage.setItem('coneWorksAccounts', JSON.stringify(accounts));
-            updateFriends();
-            updatePlayerList();
-        }
-
-        // Navigation
-        function showHome() {
-            currentGame = null;
-            currentServer = null;
-            serverOwner = null;
-            canvas.style.display = 'none';
-            ui.style.display = 'none';
-            publicChat.style.display = 'none';
-            chatBox.style.display = 'none';
-            friendBox.style.display = 'none';
-            playerListBox.style.display = 'none';
-            voteBox.style.display = 'none';
-            reportBox.style.display = 'none';
-            shopBox.style.display = 'none';
-            skinBox.style.display = 'none';
-            deleteAccountBox.style.display = 'none';
-            document.getElementById('fullscreenBtn').style.display = 'none';
-            document.getElementById('backBtn').style.display = 'none';
-            document.getElementById('homePage').style.display = 'block';
-            document.getElementById('serverPage').style.display = 'none';
-            document.getElementById('createServerPage').style.display = 'none';
-            document.getElementById('settingsPage').style.display = 'none';
-            updateChat();
-            updateFriends();
-            updateConeconDisplay();
-            updatePlayerList();
-        }
-
-        function loadServerPage() {
-            document.getElementById('homePage').style.display = 'none';
-            document.getElementById('serverPage').style.display = 'block';
-            updateServerSuggestions();
-        }
-
-        function loadCreateServerPage() {
-            document.getElementById('homePage').style.display = 'none';
-            document.getElementById('createServerPage').style.display = 'block';
-        }
-
-        function loadSettingsPage() {
-            document.getElementById('homePage').style.display = 'none';
-            document.getElementById('settingsPage').style.display = 'block';
-            document.getElementById('defaultPOV').value = defaultPOV;
-            document.getElementById('mouseSensitivity').value = mouseSensitivity;
-            document.getElementById('currencyDisplay').value = currencyDisplay;
-        }
-
-        function saveSettings() {
-            defaultPOV = document.getElementById('defaultPOV').value;
-            mouseSensitivity = parseFloat(document.getElementById('mouseSensitivity').value);
-            currencyDisplay = document.getElementById('currencyDisplay').value;
-            localStorage.setItem('coneWorksDefaultPOV', defaultPOV);
-            localStorage.setItem('coneWorksMouseSensitivity', mouseSensitivity);
-            localStorage.setItem('coneWorksCurrencyDisplay', currencyDisplay);
-            showHome();
-        }
-
-        // Currency
-        function updateCurrency() {
-            if (currentGame === 'game') {
-                if (Date.now() - currencyTimer >= 60000) {
-                    conecon += 1;
-                    accounts[username].conecon = conecon;
-                    localStorage.setItem('coneWorksAccounts', JSON.stringify(accounts));
-                    currencyTimer = Date.now();
-                    updateConeconDisplay();
-                }
-            }
-        }
-
-        // Fullscreen
-        function toggleFullscreen() {
-            if (!document.fullscreenElement) {
-                canvas.requestFullscreen();
-                document.getElementById('fullscreenBtn').textContent = 'Exit Fullscreen';
-            } else {
-                document.exitFullscreen();
-                document.getElementById('fullscreenBtn').textContent = 'Fullscreen';
-            }
-        }
-
-        // Chat
-        function toggleChatBox() {
-            chatBox.style.display = chatBox.style.display === 'none' ? 'block' : 'none';
-            friendBox.style.display = 'none';
-            playerListBox.style.display = 'none';
-            updateChat();
-        }
-
-        function toggleFriendBox() {
-            friendBox.style.display = friendBox.style.display === 'none' ? 'block' : 'none';
-            chatBox.style.display = 'none';
-            playerListBox.style.display = 'none';
-            updateFriends();
-        }
-
-        function sendMessage() {
-            const text = chatInput && chatInput.value ? chatInput.value.trim() : '';
-            if (text && friends.length) {
-                messages.push({ from: username, text, timestamp: Date.now() });
-                localStorage.setItem('coneWorksMessages', JSON.stringify(messages));
-                friends.forEach(f => {
-                    let received = JSON.parse(localStorage.getItem('coneWorksRequestsReceived')) || {};
-                    if (accounts[f]) {
-                        received[f] = received[f] || [];
-                        received[f].push({ from: username, message: text });
-                    }
-                    localStorage.setItem('coneWorksRequestsReceived', JSON.stringify(received));
-                });
-                chatInput.value = '';
-                updateChat();
-            }
-        }
-
-        function updateChat() {
-            let received = JSON.parse(localStorage.getItem('coneWorksRequestsReceived')) || {};
-            let unread = received[username]?.filter(r => r.message && friends.includes(r.from)) || [];
-            if (unread.length && chatBox.style.display !== 'block') {
-                notification.style.display = 'block';
-                notification.innerHTML = unread.map(r => `${r.from}: ${r.message}`).join('<br>');
-                setTimeout(() => notification.style.display = 'none', 5000);
-            }
-            chatMessages.innerHTML = messages
-                .filter(m => friends.includes(m.from) || m.from === username)
-                .sort((a, b) => b.timestamp - a.timestamp)
-                .map(m => `<div>${m.from}: ${m.text}</div>`)
-                .join('');
-            chatMessages.scrollTop = chatMessages.scrollHeight;
-        }
-
-        function sendPublicMessage() {
-            const text = publicChatInput && publicChatInput.value ? publicChatInput.value.trim() : '';
-            if (text && currentServer) {
-                publicMessages.push({ from: username, text, server: currentServer });
-                publicChatInput.value = '';
-                updatePublicChat();
-            }
-        }
-
-        function updatePublicChat() {
-            publicChatMessages.innerHTML = publicMessages
-                .filter(m => m.server === currentServer)
-                .map(m => `<div>${m.from}: ${m.text}</div>`)
-                .join('');
-            publicChatMessages.scrollTop = publicChatMessages.scrollHeight;
-        }
-
-        // Server Management
-        function updateServerSuggestions() {
-            const query = serverSearch && serverSearch.value ? serverSearch.value.toLowerCase().trim() : '';
-            const mode = document.getElementById('modeFilter').value;
-            document.getElementById('serverSuggestions').innerHTML = query ? servers
-                .filter(s => s.name.toLowerCase().includes(query) && (mode === 'all' || s.mode === mode))
-                .map(s => `<div class="suggestion" onclick="document.getElementById('serverSearch').value='${s.name}'; document.getElementById('serverSuggestions').innerHTML=''">${s.name} (${s.mode})</div>`)
-                .join('') : '';
-        }
-
-        function createServer() {
-            const serverName = document.getElementById('newServerName').value.trim();
-            const mode = document.getElementById('newServerMode').value;
-            if (serverName && !servers.some(s => s.name === serverName)) {
-                servers.push({ name: serverName, mode, owner: username });
-                localStorage.setItem('coneWorksServers', JSON.stringify(servers));
-                joinServer(serverName);
-            } else {
-                alert(serverName ? 'Server name taken!' : 'Enter a server name!');
-            }
-        }
-
-        function joinServer(serverName) {
-            if (serverName === 'random') {
-                const filteredServers = servers.filter(s => document.getElementById('modeFilter').value === 'all' || s.mode === document.getElementById('modeFilter').value);
-                serverName = filteredServers[Math.floor(Math.random() * filteredServers.length)]?.name;
-            }
-            const server = servers.find(s => s.name === serverName);
-            if (!server) {
-                alert('Server Not Found!');
-                return;
-            }
-            currentServer = serverName;
-            serverOwner = server.owner;
-            serverMode = server.mode;
-            currentGame = 'game';
-            firstPerson = defaultPOV === 'first';
-            document.getElementById('serverPage').style.display = 'none';
-            canvas.style.display = 'block';
-            ui.style.display = 'block';
-            publicChat.style.display = publicChatVisible ? 'block' : 'none';
-            document.getElementById('fullscreenBtn').style.display = 'block';
-            document.getElementById('backBtn').style.display = 'block';
-            initGame();
-            updatePublicChat();
-            currencyTimer = Date.now();
-        }
-
-        function leaveServer() {
-            currentServer = null;
-            serverOwner = null;
-            currentGame = null;
-            serverMode = 'fight';
-            players = {};
-            canvas.style.display = 'none';
-            ui.style.display = 'none';
-            publicChat.style.display = 'none';
-            voteBox.style.display = 'none';
-            reportBox.style.display = 'none';
-            shopBox.style.display = 'none';
-            skinBox.style.display = 'none';
-            playerListBox.style.display = 'none';
-            document.getElementById('fullscreenBtn').style.display = 'none';
-            document.getElementById('backBtn').style.display = 'none';
-            showHome();
-        }
-
-        // Voting
-        function startVote() {
-            voteBox.style.display = 'block';
-            voteOptions.innerHTML = `
-                <button onclick="submitVote('Arena')">Arena</button>
-                <button onclick="submitVote('Rooftop')">Rooftop</button>
-                <button onclick="submitVote('Space Station')">Space Station</button>
-            `;
-        }
-
-        function submitVote(mapName) {
-            mapVotes[mapName]++;
-            closeVote();
-        }
-
-        function closeVote() {
-            voteBox.style.display = 'none';
-            const maxVotes = Math.max(...Object.values(mapVotes));
-            const winningMaps = Object.keys(mapVotes).filter(m => map
+                        mouseSensitivity = parseFloat(localStorage.getItem('coneWorksMouse

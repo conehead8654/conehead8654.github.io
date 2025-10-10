@@ -120,7 +120,21 @@
             display: none;
             font-size: 14px;
         }
-        #friendSearch, #serverSearch, #newServerName {
+        #playerListBox {
+            position: absolute;
+            top: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 300px;
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 10px;
+            padding: 10px;
+            display: none;
+            font-size: 14px;
+            overflow-y: auto;
+            max-height: 400px;
+        }
+        #friendSearch, #serverSearch, #newServerName, #deleteUsername, #deletePassword {
             width: 220px;
             margin-bottom: 5px;
         }
@@ -192,9 +206,20 @@
             display: none;
             text-align: center;
         }
+        #deleteAccountBox {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            padding: 20px;
+            border-radius: 10px;
+            display: none;
+            text-align: center;
+        }
         .back-btn {
             position: absolute;
-            top: 10px;
+            top: 50px;
             right: 10px;
             padding: 10px 20px;
             background: #f44336;
@@ -230,6 +255,15 @@
             text-align: left;
             max-width: 300px;
         }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 5px;
+            text-align: left;
+            border-bottom: 1px solid #555;
+        }
     </style>
 </head>
 <body>
@@ -253,6 +287,7 @@
                     <li><b>R</b>: Report/ban player (Conehead8654 only)</li>
                     <li><b>P</b>: Open weapon shop</li>
                     <li><b>K</b>: Open skin shop</li>
+                    <li><b>L</b>: Toggle player list</li>
                 </ul>
             </div>
         </div>
@@ -260,11 +295,14 @@
     <div id="homePage" style="display: none;">
         <div id="coneconDisplay"></div>
         <h1>ConeWorks</h1>
-        <p>Create or join epic servers to brawl or chill. Unblocked for Trinity Heights.</p>
+        <p>Create or join epic servers to brawl or chill.</p>
         <div class="game-buttons">
             <button onclick="loadServerPage()">Join Server</button>
             <button onclick="loadCreateServerPage()">Create Server</button>
             <button onclick="toggleChatBox()">Chat & Friends</button>
+            <button onclick="toggleFriendBox()">Search Players</button>
+            <button onclick="togglePlayerList()">Player List</button>
+            <button onclick="testMultiplayer()">Test Multiplayer</button>
             <button onclick="loadSettingsPage()">Settings</button>
         </div>
         <p>Earn 1 Conecon per minute in-game to buy skins and weapons!</p>
@@ -273,7 +311,8 @@
         <h1>Join a Server</h1>
         <p>Search for a server or join a random one!</p>
         <input id="serverSearch" type="text" placeholder="Search servers..." oninput="updateServerSuggestions()">
-        <select id="modeFilter">
+        <label for="modeFilter">Filter Mode:</label>
+        <select id="modeFilter" aria-label="Filter servers by game mode">
             <option value="all">All Modes</option>
             <option value="fight">Fight</option>
             <option value="chill">Chill</option>
@@ -289,7 +328,8 @@
         <h1>Create a Server</h1>
         <p>Choose a name and mode for your server!</p>
         <input id="newServerName" type="text" placeholder="Server Name">
-        <select id="newServerMode">
+        <label for="newServerMode">Server Mode:</label>
+        <select id="newServerMode" aria-label="Select server game mode">
             <option value="fight">Fight</option>
             <option value="chill">Chill</option>
         </select>
@@ -303,20 +343,43 @@
         <p>Customize your ConeWorks experience.</p>
         <div class="settings-container">
             <label for="defaultPOV">Default POV on Join:</label>
-            <select id="defaultPOV">
+            <select id="defaultPOV" aria-label="Select default camera perspective">
                 <option value="third">Third-Person</option>
                 <option value="first">First-Person</option>
             </select>
             <label for="mouseSensitivity">Mouse Sensitivity:</label>
             <input type="range" id="mouseSensitivity" min="0.001" max="0.01" step="0.001" value="0.002">
             <label for="currencyDisplay">Currency Display:</label>
-            <select id="currencyDisplay">
+            <select id="currencyDisplay" aria-label="Select currency display position">
                 <option value="top-left">Top-Left</option>
                 <option value="top-right">Top-Right</option>
             </select>
             <button onclick="saveSettings()">Save</button>
+            <button onclick="backupData()">Backup Data</button>
+            <button onclick="restoreData()">Restore Data</button>
+            <button onclick="showDeleteAccount()">Delete Account</button>
             <button onclick="showHome()">Back</button>
         </div>
+    </div>
+    <div id="deleteAccountBox" style="display: none;">
+        <h2>Delete Account</h2>
+        <p>Enter your username and password to confirm deletion.</p>
+        <input id="deleteUsername" type="text" placeholder="Username">
+        <input id="deletePassword" type="password" placeholder="Password">
+        <div class="game-buttons">
+            <button onclick="deleteAccount()">Confirm Delete</button>
+            <button onclick="document.getElementById('deleteAccountBox').style.display='none'">Cancel</button>
+        </div>
+    </div>
+    <div id="playerListBox" style="display: none;">
+        <h2>Player Leaderboard</h2>
+        <table>
+            <thead>
+                <tr><th>Username</th><th>Wins</th><th>Conecons</th><th>Action</th></tr>
+            </thead>
+            <tbody id="playerList"></tbody>
+        </table>
+        <button onclick="togglePlayerList()">Close</button>
     </div>
     <canvas id="canvas" width="800" height="600"></canvas>
     <button id="fullscreenBtn" onclick="toggleFullscreen()" style="display: none;">Fullscreen</button>
@@ -337,6 +400,7 @@
         <div id="friendSuggestions"></div>
         <div id="friendList"></div>
         <div id="friendRequests"></div>
+        <button onclick="sendFriendRequest()">Send Friend Request</button>
         <button onclick="toggleFriendBox()">Close</button>
     </div>
     <div id="notification"></div>
@@ -347,7 +411,8 @@
     </div>
     <div id="reportBox" style="display: none;">
         <h2>Report Player</h2>
-        <select id="reportPlayer"></select>
+        <label for="reportPlayer">Select Player:</label>
+        <select id="reportPlayer" aria-label="Select player to report"></select>
         <button onclick="submitReport()">Report</button>
         <button onclick="document.getElementById('reportBox').style.display='none'">Cancel</button>
     </div>
@@ -361,6 +426,7 @@
         <div id="skinList"></div>
         <button onclick="document.getElementById('skinBox').style.display='none'">Close</button>
     </div>
+    <input id="restoreInput" type="file" accept=".json" style="display: none;" onchange="handleRestore(event)">
 
     <script>
         // State
@@ -409,11 +475,13 @@
             'laser': { cost: 100, damage: 40 }
         };
         let currencyTimer = Date.now();
+        let use2D = false;
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
         const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
         if (!gl) {
-            alert('WebGL not supported. Try Chrome in incognito mode or a different browser.');
+            console.warn('WebGL not supported, switching to 2D canvas');
+            use2D = true;
         }
         const ui = document.getElementById('ui');
         const publicChat = document.getElementById('publicChat');
@@ -427,6 +495,8 @@
         const friendSuggestions = document.getElementById('friendSuggestions');
         const friendList = document.getElementById('friendList');
         const friendRequests = document.getElementById('friendRequests');
+        const playerListBox = document.getElementById('playerListBox');
+        const playerList = document.getElementById('playerList');
         const notification = document.getElementById('notification');
         const voteBox = document.getElementById('voteBox');
         const voteOptions = document.getElementById('voteOptions');
@@ -434,6 +504,7 @@
         const reportPlayer = document.getElementById('reportPlayer');
         const shopBox = document.getElementById('shopBox');
         const skinBox = document.getElementById('skinBox');
+        const deleteAccountBox = document.getElementById('deleteAccountBox');
         const coneconDisplay = document.getElementById('coneconDisplay');
         let publicChatVisible = true;
 
@@ -454,6 +525,7 @@
                 updateFriends();
                 updateChat();
                 updateConeconDisplay();
+                updatePlayerList();
             } else {
                 alert('Invalid username or password!');
             }
@@ -477,10 +549,117 @@
                 updateFriends();
                 updateChat();
                 updateConeconDisplay();
+                updatePlayerList();
             } else if (user === 'Conehead8654') {
                 alert('Username "Conehead8654" is reserved!');
             } else {
                 alert(accounts[user] ? 'Username taken!' : 'Enter a valid username and password!');
+            }
+        }
+
+        // Account Deletion
+        function showDeleteAccount() {
+            document.getElementById('deleteAccountBox').style.display = 'block';
+            document.getElementById('deleteUsername').value = '';
+            document.getElementById('deletePassword').value = '';
+        }
+
+        function deleteAccount() {
+            const user = document.getElementById('deleteUsername').value.trim();
+            const pass = document.getElementById('deletePassword').value;
+            if (user === username && accounts[user] && accounts[user].password === pass) {
+                delete accounts[user];
+                let received = JSON.parse(localStorage.getItem('coneWorksRequestsReceived')) || {};
+                delete received[user];
+                friends.forEach(f => {
+                    accounts[f].friends = accounts[f].friends.filter(fr => fr !== user);
+                    accounts[f].requestsSent = accounts[f].requestsSent.filter(r => r !== user);
+                });
+                localStorage.setItem('coneWorksAccounts', JSON.stringify(accounts));
+                localStorage.setItem('coneWorksRequestsReceived', JSON.stringify(received));
+                messages = messages.filter(m => m.from !== user);
+                localStorage.setItem('coneWorksMessages', JSON.stringify(messages));
+                username = null;
+                friends = [];
+                friendRequestsSent = [];
+                friendRequestsReceived = [];
+                conecon = 0;
+                document.getElementById('deleteAccountBox').style.display = 'none';
+                document.getElementById('settingsPage').style.display = 'none';
+                document.getElementById('loginPage').style.display = 'block';
+                alert('Account deleted successfully!');
+            } else {
+                alert('Invalid username or password!');
+            }
+        }
+
+        // Backup & Restore
+        function backupData() {
+            const data = {
+                accounts: localStorage.getItem('coneWorksAccounts'),
+                messages: localStorage.getItem('coneWorksMessages'),
+                requests: localStorage.getItem('coneWorksRequestsReceived'),
+                servers: localStorage.getItem('coneWorksServers'),
+                settings: {
+                    pov: localStorage.getItem('coneWorksDefaultPOV'),
+                    sensitivity: localStorage.getItem('coneWorksMouseSensitivity'),
+                    currency: localStorage.getItem('coneWorksCurrencyDisplay')
+                }
+            };
+            const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'coneWorksBackup.json';
+            a.click();
+            URL.revokeObjectURL(url);
+            alert('Data backed up successfully!');
+        }
+
+        function restoreData() {
+            document.getElementById('restoreInput').click();
+        }
+
+        function handleRestore(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const data = JSON.parse(e.target.result);
+                        if (data.accounts) localStorage.setItem('coneWorksAccounts', data.accounts);
+                        if (data.messages) localStorage.setItem('coneWorksMessages', data.messages);
+                        if (data.requests) localStorage.setItem('coneWorksRequestsReceived', data.requests);
+                        if (data.servers) localStorage.setItem('coneWorksServers', data.servers);
+                        if (data.settings) {
+                            if (data.settings.pov) localStorage.setItem('coneWorksDefaultPOV', data.settings.pov);
+                            if (data.settings.sensitivity) localStorage.setItem('coneWorksMouseSensitivity', data.settings.sensitivity);
+                            if (data.settings.currency) localStorage.setItem('coneWorksCurrencyDisplay', data.settings.currency);
+                        }
+                        accounts = JSON.parse(localStorage.getItem('coneWorksAccounts')) || {};
+                        messages = JSON.parse(localStorage.getItem('coneWorksMessages')) || [];
+                        servers = JSON.parse(localStorage.getItem('coneWorksServers')) || servers;
+                        defaultPOV = localStorage.getItem('coneWorksDefaultPOV') || 'third';
+                        mouseSensitivity = parseFloat(localStorage.getItem('coneWorksMouseSensitivity')) || 0.002;
+                        currencyDisplay = localStorage.getItem('coneWorksCurrencyDisplay') || 'top-left';
+                        if (username) {
+                            friends = accounts[username].friends || [];
+                            friendRequestsSent = accounts[username].requestsSent || [];
+                            friendRequestsReceived = JSON.parse(localStorage.getItem('coneWorksRequestsReceived'))?.[username] || [];
+                            conecon = accounts[username].conecon || 0;
+                            equippedSkin = accounts[username].equippedSkin || 'default-boy';
+                            equippedWeapon = accounts[username].equippedWeapon || 'fist';
+                        }
+                        updateFriends();
+                        updateChat();
+                        updateConeconDisplay();
+                        updatePlayerList();
+                        alert('Data restored successfully!');
+                    } catch (e) {
+                        alert('Error restoring data: Invalid file format!');
+                    }
+                };
+                reader.readAsText(file);
             }
         }
 
@@ -495,6 +674,55 @@
         function toggleControls() {
             const controlsBox = document.getElementById('controlsBox');
             controlsBox.style.display = controlsBox.style.display === 'none' ? 'block' : 'none';
+        }
+
+        // Player List
+        function togglePlayerList() {
+            playerListBox.style.display = playerListBox.style.display === 'none' ? 'block' : 'none';
+            chatBox.style.display = 'none';
+            friendBox.style.display = 'none';
+            updatePlayerList();
+        }
+
+        function updatePlayerList() {
+            const playersData = Object.keys(accounts)
+                .map(user => ({
+                    username: user,
+                    wins: accounts[user].wins || 0,
+                    conecon: accounts[user].conecon || 0
+                }))
+                .sort((a, b) => b.wins - a.wins);
+            playerList.innerHTML = playersData
+                .map(p => `
+                    <tr>
+                        <td>${p.username}</td>
+                        <td>${p.wins}</td>
+                        <td>${p.conecon}</td>
+                        <td>
+                            ${p.username !== username && !friends.includes(p.username) && !friendRequestsSent.includes(p.username)
+                                ? `<button onclick="sendFriendRequestFromList('${p.username}')">Friend</button>`
+                                : p.username === username ? 'You' : 'Friended'}
+                        </td>
+                    </tr>
+                `)
+                .join('');
+        }
+
+        function sendFriendRequestFromList(target) {
+            if (target && target !== username && accounts[target] && !friends.includes(target) && !friendRequestsSent.includes(target)) {
+                friendRequestsSent.push(target);
+                accounts[username].requestsSent = friendRequestsSent;
+                let received = JSON.parse(localStorage.getItem('coneWorksRequestsReceived')) || {};
+                received[target] = received[target] || [];
+                received[target].push({ from: username, to: target });
+                localStorage.setItem('coneWorksRequestsReceived', JSON.stringify(received));
+                localStorage.setItem('coneWorksAccounts', JSON.stringify(accounts));
+                updatePlayerList();
+                updateFriends();
+                alert(`Friend request sent to ${target}!`);
+            } else {
+                alert('Cannot send friend request!');
+            }
         }
 
         // Friends
@@ -528,6 +756,7 @@
                 friendSearch.value = '';
                 friendSuggestions.innerHTML = '';
                 updateFriends();
+                updatePlayerList();
                 alert(`Friend request sent to ${target}!`);
             } else {
                 alert('Player Not Found!');
@@ -542,6 +771,7 @@
             localStorage.setItem('coneWorksRequestsReceived', JSON.stringify(received));
             localStorage.setItem('coneWorksAccounts', JSON.stringify(accounts));
             updateFriends();
+            updatePlayerList();
         }
 
         function rejectFriend(from) {
@@ -549,6 +779,7 @@
             received[username] = received[username]?.filter(r => r.from !== from) || [];
             localStorage.setItem('coneWorksRequestsReceived', JSON.stringify(received));
             updateFriends();
+            updatePlayerList();
         }
 
         function removeFriend(friend) {
@@ -556,6 +787,7 @@
             accounts[username].friends = friends;
             localStorage.setItem('coneWorksAccounts', JSON.stringify(accounts));
             updateFriends();
+            updatePlayerList();
         }
 
         // Navigation
@@ -568,10 +800,12 @@
             publicChat.style.display = 'none';
             chatBox.style.display = 'none';
             friendBox.style.display = 'none';
+            playerListBox.style.display = 'none';
             voteBox.style.display = 'none';
             reportBox.style.display = 'none';
             shopBox.style.display = 'none';
             skinBox.style.display = 'none';
+            deleteAccountBox.style.display = 'none';
             document.getElementById('fullscreenBtn').style.display = 'none';
             document.getElementById('backBtn').style.display = 'none';
             document.getElementById('homePage').style.display = 'block';
@@ -581,6 +815,7 @@
             updateChat();
             updateFriends();
             updateConeconDisplay();
+            updatePlayerList();
         }
 
         function loadServerPage() {
@@ -640,12 +875,14 @@
         function toggleChatBox() {
             chatBox.style.display = chatBox.style.display === 'none' ? 'block' : 'none';
             friendBox.style.display = 'none';
+            playerListBox.style.display = 'none';
             updateChat();
         }
 
         function toggleFriendBox() {
             friendBox.style.display = friendBox.style.display === 'none' ? 'block' : 'none';
             chatBox.style.display = 'none';
+            playerListBox.style.display = 'none';
             updateFriends();
         }
 
@@ -761,6 +998,7 @@
             reportBox.style.display = 'none';
             shopBox.style.display = 'none';
             skinBox.style.display = 'none';
+            playerListBox.style.display = 'none';
             document.getElementById('fullscreenBtn').style.display = 'none';
             document.getElementById('backBtn').style.display = 'none';
             showHome();
@@ -784,416 +1022,4 @@
         function closeVote() {
             voteBox.style.display = 'none';
             const maxVotes = Math.max(...Object.values(mapVotes));
-            const winningMaps = Object.keys(mapVotes).filter(m => mapVotes[m] === maxVotes);
-            map = winningMaps[Math.floor(Math.random() * winningMaps.length)];
-            mapVotes = { Arena: 0, Rooftop: 0, 'Space Station': 0 };
-            lastMapSwitch = Date.now();
-            initGame();
-        }
-
-        // Reporting
-        function openReportBox() {
-            reportBox.style.display = 'block';
-            reportPlayer.innerHTML = Object.keys(players)
-                .filter(p => p !== username)
-                .map(p => `<option value="${p}">${p}</option>`)
-                .join('');
-        }
-
-        function submitReport() {
-            const target = reportPlayer.value;
-            if (target && players[target]) {
-                if (username === 'Conehead8654' && username === serverOwner) {
-                    delete players[target];
-                    alert(`${target} has been banned from the server!`);
-                } else {
-                    alert(`Report submitted for ${target}.`);
-                }
-            }
-            reportBox.style.display = 'none';
-        }
-
-        // Shop & Skins
-        function openShop() {
-            if (serverMode === 'fight') {
-                shopBox.style.display = 'block';
-                document.getElementById('weaponList').innerHTML = Object.entries(weapons)
-                    .map(([name, { cost, damage }]) => `<div>${name} (+${damage} damage) - ${cost} Conecon <button onclick="buyWeapon('${name}', ${cost})">${accounts[username].equippedWeapon === name ? 'Equipped' : 'Buy'}</button></div>`)
-                    .join('');
-            }
-        }
-
-        function buyWeapon(name, cost) {
-            if (conecon >= cost && accounts[username].equippedWeapon !== name) {
-                conecon -= cost;
-                accounts[username].equippedWeapon = name;
-                accounts[username].conecon = conecon;
-                localStorage.setItem('coneWorksAccounts', JSON.stringify(accounts));
-                openShop();
-                updateConeconDisplay();
-            } else if (accounts[username].equippedWeapon !== name) {
-                accounts[username].equippedWeapon = name;
-                localStorage.setItem('coneWorksAccounts', JSON.stringify(accounts));
-                openShop();
-            } else {
-                alert('Already equipped or not enough Conecon!');
-            }
-        }
-
-        function openSkinShop() {
-            skinBox.style.display = 'block';
-            document.getElementById('skinList').innerHTML = Object.entries(skins)
-                .map(([name, { cost, color }]) => `<div>${name} - ${cost} Conecon <button onclick="buySkin('${name}', ${cost})">${accounts[username].equippedSkin === name ? 'Equipped' : 'Buy'}</button></div>`)
-                .join('');
-        }
-
-        function buySkin(name, cost) {
-            if (conecon >= cost && accounts[username].equippedSkin !== name) {
-                conecon -= cost;
-                accounts[username].equippedSkin = name;
-                accounts[username].conecon = conecon;
-                localStorage.setItem('coneWorksAccounts', JSON.stringify(accounts));
-                openSkinShop();
-                updateConeconDisplay();
-            } else if (accounts[username].equippedSkin !== name) {
-                accounts[username].equippedSkin = name;
-                localStorage.setItem('coneWorksAccounts', JSON.stringify(accounts));
-                openSkinShop();
-            } else {
-                alert('Already equipped or not enough Conecon!');
-            }
-        }
-
-        // Input
-        let keys = {};
-        window.addEventListener('keydown', (e) => {
-            keys[e.key.toLowerCase()] = true;
-            if (currentGame === 'game' && e.key.toLowerCase() === 'c') {
-                publicChatVisible = !publicChatVisible;
-                publicChat.style.display = publicChatVisible ? 'block' : 'none';
-            }
-            if (currentGame === 'game' && e.key.toLowerCase() === 'o') {
-                firstPerson = !firstPerson;
-            }
-            if (currentGame === 'game' && e.key.toLowerCase() === 'r') {
-                openReportBox();
-            }
-            if (currentGame === 'game' && e.key.toLowerCase() === 'p') {
-                openShop();
-            }
-            if (currentGame === 'game' && e.key.toLowerCase() === 'k') {
-                openSkinShop();
-            }
-        });
-        window.addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; });
-        canvas.addEventListener('click', () => {
-            if (currentGame === 'game') canvas.requestPointerLock();
-        });
-        canvas.addEventListener('mousemove', (e) => {
-            if (currentGame === 'game' && document.pointerLockElement === canvas) {
-                yaw -= e.movementX * mouseSensitivity;
-                pitch -= e.movementY * mouseSensitivity;
-                pitch = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, pitch));
-            }
-        });
-
-        // Game
-        function initGame() {
-            if (!gl) return;
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-            gl.viewport(0, 0, canvas.width, canvas.height);
-            window.addEventListener('resize', () => {
-                canvas.width = window.innerWidth;
-                canvas.height = window.innerHeight;
-                if (gl) gl.viewport(0, 0, canvas.width, canvas.height);
-            });
-
-            const vsSource = `
-                attribute vec4 aPosition; attribute vec3 aNormal; attribute vec4 aColor;
-                uniform mat4 uModelViewMatrix; uniform mat4 uProjectionMatrix;
-                varying vec3 vNormal; varying vec4 vColor;
-                void main() { gl_Position = uProjectionMatrix * uModelViewMatrix * aPosition; vNormal = aNormal; vColor = aColor; }
-            `;
-            const fsSource = `
-                precision mediump float; varying vec3 vNormal; varying vec4 vColor;
-                void main() {
-                    float light = max(0.0, dot(vNormal, vec3(0.0, 1.0, 0.0))) * 0.8 + 0.2;
-                    gl_FragColor = vColor * light;
-                }
-            `;
-
-            function loadShader(type, source) {
-                const shader = gl.createShader(type);
-                gl.shaderSource(shader, source);
-                gl.compileShader(shader);
-                if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-                    console.error('Shader compile error:', gl.getShaderInfoLog(shader));
-                    gl.deleteShader(shader);
-                    return null;
-                }
-                return shader;
-            }
-            const shaderProgram = gl.createProgram();
-            gl.attachShader(shaderProgram, loadShader(gl.VERTEX_SHADER, vsSource));
-            gl.attachShader(shaderProgram, loadShader(gl.FRAGMENT_SHADER, fsSource));
-            gl.linkProgram(shaderProgram);
-            if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
-                console.error('Program link error:', gl.getProgramInfoLog(shaderProgram));
-                return;
-            }
-            gl.useProgram(shaderProgram);
-
-            const positionLocation = gl.getAttribLocation(shaderProgram, 'aPosition');
-            const normalLocation = gl.getAttribLocation(shaderProgram, 'aNormal');
-            const colorLocation = gl.getAttribLocation(shaderProgram, 'aColor');
-            const modelViewMatrixLoc = gl.getUniformLocation(shaderProgram, 'uModelViewMatrix');
-            const projectionMatrixLoc = gl.getUniformLocation(shaderProgram, 'uProjectionMatrix');
-
-            // Baseplate
-            const baseplatePositions = new Float32Array([
-                -20, 0, -20, 20, 0, -20, 20, 0, 20,
-                -20, 0, -20, 20, 0, 20, -20, 0, 20
-            ]);
-            const baseplateNormals = new Float32Array(Array(baseplatePositions.length / 3).fill(0).flatMap(() => [0, 1, 0]));
-            const baseplateColors = new Float32Array(Array(baseplatePositions.length / 3).fill(0).flatMap(() => [0.3, 0.5, 0.3, 1]));
-            const baseplateBuffer = gl.createBuffer();
-            const baseplateNormalBuffer = gl.createBuffer();
-            const baseplateColorBuffer = gl.createBuffer();
-
-            // Player Models
-            function getPlayerModel(skin) {
-                const head = [
-                    -0.3, 1.2, -0.3, 0.3, 1.2, -0.3, 0.3, 1.5, -0.3,
-                    -0.3, 1.2, -0.3, 0.3, 1.5, -0.3, -0.3, 1.5, -0.3
-                ];
-                const body = [
-                    -0.4, 0.5, -0.4, 0.4, 0.5, -0.4, 0.4, 1.0, -0.4,
-                    -0.4, 0.5, -0.4, 0.4, 1.0, -0.4, -0.4, 1.0, -0.4
-                ];
-                const leftArm = [
-                    -0.6, 0.5, -0.1, -0.4, 0.5, -0.1, -0.4, 1.0, -0.1,
-                    -0.6, 0.5, -0.1, -0.4, 1.0, -0.1, -0.6, 1.0, -0.1
-                ];
-                const rightArm = [
-                    0.4, 0.5, -0.1, 0.6, 0.5, -0.1, 0.6, 1.0, -0.1,
-                    0.4, 0.5, -0.1, 0.6, 1.0, -0.1, 0.4, 1.0, -0.1
-                ];
-                const leftLeg = [
-                    -0.2, 0, -0.6, -0.2, 0.5, -0.6, 0.2, 0.5, -0.6,
-                    -0.2, 0, -0.6, 0.2, 0.5, -0.6, 0.2, 0, -0.6
-                ];
-                const rightLeg = [
-                    -0.2, 0, 0.6, -0.2, 0.5, 0.6, 0.2, 0.5, 0.6,
-                    -0.2, 0, 0.6, 0.2, 0.5, 0.6, 0.2, 0, 0.6
-                ];
-                return new Float32Array([...head, ...body, ...leftArm, ...rightArm, ...leftLeg, ...rightLeg]);
-            }
-
-            players[username] = {
-                x: 0, y: 2, z: 0, vx: 0, vy: 0, vz: 0,
-                health: serverMode === 'fight' ? 100 : null,
-                wins: accounts[username].wins || 0,
-                color: skins[equippedSkin].color,
-                username: username,
-                skin: equippedSkin,
-                weapon: equippedWeapon
-            };
-
-            function gameUpdate() {
-                updateCurrency();
-                const player = players[username];
-                const speed = 0.1;
-                const gravity = 0.05;
-                const forward = [Math.sin(yaw), 0, Math.cos(yaw)];
-                const right = [Math.cos(yaw), 0, -Math.sin(yaw)];
-                player.vx = 0;
-                player.vz = 0;
-                if (keys['w'] || keys['arrowup']) { player.vx += forward[0] * speed; player.vz += forward[2] * speed; }
-                if (keys['s'] || keys['arrowdown']) { player.vx -= forward[0] * speed; player.vz -= forward[2] * speed; }
-                if (keys['a'] || keys['arrowleft']) { player.vx -= right[0] * speed; player.vz -= right[2] * speed; }
-                if (keys['d'] || keys['arrowright']) { player.vx += right[0] * speed; player.vz += right[2] * speed; }
-                if (keys[' '] && player.y <= 2) { player.vy = 0.3; }
-                player.vx *= 0.8;
-                player.vy -= gravity;
-                player.vz *= 0.8;
-                player.x += player.vx;
-                player.y += player.vy;
-                player.z += player.vz;
-                if (player.y < 2) { player.y = 2; player.vy = 0; }
-
-                // Collisions
-                for (let p in players) {
-                    if (p !== username) {
-                        const other = players[p];
-                        const dx = player.x - other.x;
-                        const dz = player.z - other.z;
-                        const dist = Math.sqrt(dx * dx + dz * dz);
-                        if (dist < 1 && dist > 0) {
-                            player.x += (dx / dist) * 0.1;
-                            player.z += (dz / dist) * 0.1;
-                            other.x -= (dx / dist) * 0.1;
-                            other.z -= (dz / dist) * 0.1;
-                        }
-                    }
-                }
-
-                // Attack
-                if (serverMode === 'fight' && keys['e'] && !keys['space']) {
-                    for (let p in players) {
-                        if (p !== username) {
-                            const dx = player.x - players[p].x;
-                            const dz = player.z - players[p].z;
-                            const dist = Math.sqrt(dx * dx + dz * dz);
-                            if (dist < 2) {
-                                players[p].health -= weapons[equippedWeapon].damage;
-                                if (players[p].health <= 0) {
-                                    players[p].x = Math.random() * 10 - 5;
-                                    players[p].z = Math.random() * 10 - 5;
-                                    players[p].health = 100;
-                                    player.wins++;
-                                    accounts[username].wins = player.wins;
-                                    localStorage.setItem('coneWorksAccounts', JSON.stringify(accounts));
-                                }
-                            }
-                        }
-                    }
-                }
-
-                if (Date.now() - lastMapSwitch > mapTimer) startVote();
-                requestAnimationFrame(gameUpdate);
-            }
-
-            function gameRender() {
-                if (!gl) return;
-                gl.clearColor(map === 'Arena' ? 0.5 : map === 'Rooftop' ? 0.7 : 0.2, map === 'Rooftop' ? 0.8 : 0.5, map === 'Space Station' ? 0.2 : 1.0, 1.0);
-                gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-                gl.enable(gl.DEPTH_TEST);
-
-                const fov = Math.PI / 3;
-                const aspect = canvas.width / canvas.height;
-                const zNear = 0.1, zFar = 100;
-                const proj = new Float32Array([
-                    1 / (aspect * Math.tan(fov / 2)), 0, 0, 0,
-                    0, 1 / Math.tan(fov / 2), 0, 0,
-                    0, 0, -(zFar + zNear) / (zFar - zNear), -1,
-                    0, 0, -2 * zFar * zNear / (zFar - zNear), 0
-                ]);
-
-                const player = players[username];
-                const cameraOffset = firstPerson ? [0, 1.4, 0] : [0, 2, -5];
-                const cosP = Math.cos(pitch), sinP = Math.sin(pitch);
-                const cosY = Math.cos(yaw), sinY = Math.sin(yaw);
-                const modelView = new Float32Array([
-                    cosY, sinY * sinP, -sinY * cosP, 0,
-                    0, cosP, sinP, 0,
-                    sinY, -cosY * sinP, cosY * cosP, 0,
-                    -(player.x + cameraOffset[0] * cosY + cameraOffset[2] * sinY * cosP),
-                    -(player.y + cameraOffset[1] + cameraOffset[2] * sinP),
-                    -(player.z + cameraOffset[0] * sinY - cameraOffset[2] * cosY * cosP), 1
-                ]);
-
-                gl.uniformMatrix4fv(projectionMatrixLoc, false, proj);
-                gl.uniformMatrix4fv(modelViewMatrixLoc, false, modelView);
-
-                // Render Baseplate
-                gl.bindBuffer(gl.ARRAY_BUFFER, baseplateBuffer);
-                gl.bufferData(gl.ARRAY_BUFFER, baseplatePositions, gl.STATIC_DRAW);
-                gl.vertexAttribPointer(positionLocation, 3, gl.FLOAT, false, 0, 0);
-                gl.enableVertexAttribArray(positionLocation);
-                gl.bindBuffer(gl.ARRAY_BUFFER, baseplateNormalBuffer);
-                gl.bufferData(gl.ARRAY_BUFFER, baseplateNormals, gl.STATIC_DRAW);
-                gl.vertexAttribPointer(normalLocation, 3, gl.FLOAT, false, 0, 0);
-                gl.enableVertexAttribArray(normalLocation);
-                gl.bindBuffer(gl.ARRAY_BUFFER, baseplateColorBuffer);
-                gl.bufferData(gl.ARRAY_BUFFER, baseplateColors, gl.STATIC_DRAW);
-                gl.vertexAttribPointer(colorLocation, 4, gl.FLOAT, false, 0, 0);
-                gl.enableVertexAttribArray(colorLocation);
-                gl.drawArrays(gl.TRIANGLES, 0, baseplatePositions.length / 3);
-
-                // Render Players
-                for (let p in players) {
-                    const player = players[p];
-                    const positions = getPlayerModel(player.skin);
-                    const normals = new Float32Array(Array(positions.length / 3).fill(0).flatMap(() => [0, 0, 1]));
-                    const colors = new Float32Array(Array(positions.length / 3).fill(0).flatMap(() => player.color));
-                    const positionBuffer = gl.createBuffer();
-                    gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-                    gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW);
-                    gl.vertexAttribPointer(positionLocation, 3, gl.FLOAT, false, 0, 0);
-                    gl.enableVertexAttribArray(positionLocation);
-                    gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
-                    gl.bufferData(gl.ARRAY_BUFFER, normals, gl.STATIC_DRAW);
-                    gl.vertexAttribPointer(normalLocation, 3, gl.FLOAT, false, 0, 0);
-                    gl.enableVertexAttribArray(normalLocation);
-                    gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
-                    gl.bufferData(gl.ARRAY_BUFFER, colors, gl.STATIC_DRAW);
-                    gl.vertexAttribPointer(colorLocation, 4, gl.FLOAT, false, 0, 0);
-                    gl.enableVertexAttribArray(colorLocation);
-                    const playerMatrix = new Float32Array([
-                        1, 0, 0, 0,
-                        0, 1, 0, 0,
-                        0, 0, 1, 0,
-                        player.x, player.y, player.z, 1
-                    ]);
-                    gl.uniformMatrix4fv(modelViewMatrixLoc, false, playerMatrix);
-                    gl.drawArrays(gl.TRIANGLES, 0, positions.length / 3);
-
-                    // Username Billboard
-                    ctx.save();
-                    ctx.translate(canvas.width / 2, canvas.height / 2);
-                    const screenPos = toScreenPosition(player.x, player.y + 2, player.z, proj, modelView);
-                    ctx.fillStyle = 'white';
-                    ctx.font = '16px Arial';
-                    ctx.textAlign = 'center';
-                    ctx.fillText(player.username, screenPos.x, screenPos.y);
-                    ctx.restore();
-                }
-
-                // UI for Currency (in-game)
-                ctx.fillStyle = 'yellow';
-                ctx.font = '20px Arial';
-                ctx.textAlign = currencyDisplay === 'top-left' ? 'left' : 'right';
-                ctx.fillText(`Conecon: ${conecon}`, currencyDisplay === 'top-left' ? 10 : canvas.width - 10, 30);
-
-                requestAnimationFrame(gameRender);
-            }
-
-            function toScreenPosition(x, y, z, proj, mv) {
-                const vec = [x, y, z, 1];
-                const mvVec = [0, 0, 0, 0];
-                for (let i = 0; i < 4; i++) {
-                    for (let j = 0; j < 4; j++) {
-                        mvVec[i] += mv[i * 4 + j] * vec[j];
-                    }
-                }
-                const projVec = [0, 0, 0, 0];
-                for (let i = 0; i < 4; i++) {
-                    for (let j = 0; j < 4; j++) {
-                        projVec[i] += proj[i * 4 + j] * mvVec[j];
-                    }
-                }
-                return {
-                    x: (projVec[0] / projVec[3] + 1) * canvas.width / 2,
-                    y: (1 - projVec[1] / projVec[3]) * canvas.height / 2
-                };
-            }
-
-            gameUpdate();
-            gameRender();
-        }
-
-        // Init
-        document.getElementById('defaultPOV').value = defaultPOV;
-        document.getElementById('mouseSensitivity').value = mouseSensitivity;
-        document.getElementById('currencyDisplay').value = currencyDisplay;
-        updateFriends();
-        updateChat();
-        updateConeconDisplay();
-        if (!accounts['Conehead8654']) {
-            accounts['Conehead8654'] = { password: 'Di@d09202015', friends: [], requestsSent: [], wins: 0, conecon: 0, equippedSkin: 'default-boy', equippedWeapon: 'fist' };
-            localStorage.setItem('coneWorksAccounts', JSON.stringify(accounts));
-        }
-    </script>
-</body>
-</html>
+            const winningMaps = Object.keys(mapVotes).filter(m => map

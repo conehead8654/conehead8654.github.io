@@ -16,7 +16,7 @@
             align-items: center;
             justify-content: center;
             height: 100vh;
-            overflow: hidden;
+            overflow: visible !important;
         }
         h1 {
             font-size: 3.5em;
@@ -58,6 +58,7 @@
             cursor: pointer;
             transition: transform 0.2s, box-shadow 0.2s;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            z-index: 5000 !important;
         }
         button:hover {
             transform: scale(1.05);
@@ -73,16 +74,19 @@
             background: #000;
         }
         #ui {
-            position: absolute !important;
+            position: fixed !important;
             top: 10px !important;
             left: 10px !important;
-            z-index: 3000 !important;
+            z-index: 5000 !important;
             font-size: 24px !important;
             background: rgba(0, 0, 0, 0.9) !important;
             padding: 20px !important;
             border-radius: 5px !important;
+            border: 2px solid #00ffcc !important;
             display: none !important;
             visibility: visible !important;
+            opacity: 1 !important;
+            overflow: visible !important;
             touch-action: auto !important;
             min-width: 200px !important;
         }
@@ -93,6 +97,15 @@
             width: 180px !important;
             text-align: center !important;
             border-radius: 5px !important;
+            border: 2px solid white !important;
+            opacity: 1 !important;
+            z-index: 5000 !important;
+        }
+        #testButton, #testButton2 {
+            background: #ff0000 !important;
+            color: white !important;
+            border: 2px solid white !important;
+            z-index: 5000 !important;
         }
         #publicChat {
             position: absolute;
@@ -273,14 +286,14 @@
             border: none;
             border-radius: 5px;
             cursor: pointer;
-            z-index: 3000;
+            z-index: 5000;
         }
         #coneconDisplay {
             position: absolute;
             top: 10px;
             font-size: 20px;
             color: yellow;
-            z-index: 3000;
+            z-index: 5000;
         }
         #controlsBox {
             display: none;
@@ -306,7 +319,7 @@
     <button id="fullscreenBtn" onclick="toggleFullscreen()">Fullscreen</button>
     <div id="loginPage">
         <h1>ConeWorks</h1>
-        <div id="versionDisplay">Version 3.3</div>
+        <div id="versionDisplay">Version 3.4</div>
         <p>Sign in or create an account to brawl and chill!</p>
         <div class="login-container">
             <input id="username" type="text" placeholder="Username">
@@ -330,7 +343,7 @@
     <div id="homePage" style="display: none;">
         <div id="coneconDisplay">Conecons: 0</div>
         <h1>ConeWorks</h1>
-        <div id="versionDisplay">Version 3.3</div>
+        <div id="versionDisplay">Version 3.4</div>
         <p>Create or join epic servers to brawl or chill.</p>
         <div class="game-buttons">
             <button onclick="loadServerPage()">Join Server</button>
@@ -341,6 +354,7 @@
             <button onclick="testMultiplayer()">Test Multiplayer</button>
             <button onclick="loadSettingsPage()">Settings</button>
             <button onclick="testUI()">Test UI</button>
+            <button onclick="testUI2()">Test UI 2</button>
             <button id="reviewReportsBtn" style="display: none;" onclick="reviewReports()">Review Reports</button>
         </div>
         <p>Earn 1 Conecon per minute in-game to buy skins and weapons!</p>
@@ -480,10 +494,10 @@
     <input id="restoreInput" type="file" accept=".json" style="display: none;" onchange="handleRestore(event)" title="Restore backup file">
     <label for="restoreInput" style="display: none;">Restore Backup</label>
 
-    <script>
+    <script src="index.js?v=3.4">
         try {
             console.log('Script loaded successfully');
-            let version = 3.3;
+            let version = 3.4;
             let username = null;
             let accounts = JSON.parse(localStorage.getItem('coneWorksAccounts')) || {};
             let servers = JSON.parse(localStorage.getItem('coneWorksServers')) || [];
@@ -768,19 +782,53 @@
                         console.log('Created new #ui div');
                     }
                     ui.style.display = 'block';
-                    ui.style.position = 'absolute';
+                    ui.style.position = 'fixed';
                     ui.style.top = '10px';
                     ui.style.left = '10px';
-                    ui.style.zIndex = '3000';
-                    ui.innerHTML = '<button>Test Button</button>';
+                    ui.style.zIndex = '5000';
+                    ui.style.opacity = '1';
+                    ui.style.visibility = 'visible';
+                    ui.innerHTML = '<button id="testButton">Test Button</button>';
                     console.log('Test UI button rendered');
+                    console.log('UI dimensions:', { width: ui.offsetWidth, height: ui.offsetHeight });
+                    console.log('UI computed styles:', window.getComputedStyle(ui));
+                    console.log('Parent styles:', window.getComputedStyle(ui.parentElement));
                     setTimeout(() => {
                         ui.style.display = 'none';
                         console.log('Test UI hidden');
-                    }, 3000);
+                    }, 5000);
                 } catch (e) {
                     console.error('Test UI error:', e);
                     alert('Error testing UI. Check console.');
+                }
+            }
+
+            function testUI2() {
+                try {
+                    console.log('Testing UI 2 rendering directly on body');
+                    const testBtn = document.createElement('button');
+                    testBtn.id = 'testButton2';
+                    testBtn.textContent = 'Test Button 2';
+                    document.body.appendChild(testBtn);
+                    testBtn.style.position = 'fixed';
+                    testBtn.style.top = '100px';
+                    testBtn.style.left = '10px';
+                    testBtn.style.zIndex = '5000';
+                    testBtn.style.background = '#ff0000';
+                    testBtn.style.color = 'white';
+                    testBtn.style.border = '2px solid white';
+                    testBtn.style.padding = '20px';
+                    testBtn.style.fontSize = '24px';
+                    console.log('Test UI 2 button rendered');
+                    console.log('Test Button 2 dimensions:', { width: testBtn.offsetWidth, height: testBtn.offsetHeight });
+                    console.log('Test Button 2 computed styles:', window.getComputedStyle(testBtn));
+                    setTimeout(() => {
+                        testBtn.remove();
+                        console.log('Test UI 2 button removed');
+                    }, 5000);
+                } catch (e) {
+                    console.error('Test UI 2 error:', e);
+                    alert('Error testing UI 2. Check console.');
                 }
             }
 
@@ -796,13 +844,13 @@
                         document.body.appendChild(ui);
                     }
                     console.log('UI element found or created:', ui);
-                    ui.style.display = 'block !important';
-                    ui.style.position = 'absolute !important';
-                    ui.style.top = '10px !important';
-                    ui.style.left = '10px !important';
-                    ui.style.zIndex = '3000 !important';
-                    ui.style.visibility = 'visible !important';
-                    console.log('Setting UI styles: display=block, position=absolute, top=10px, left=10px, zIndex=3000, visibility=visible');
+                    ui.style.display = 'block';
+                    ui.style.position = 'fixed';
+                    ui.style.top = '10px';
+                    ui.style.left = '10px';
+                    ui.style.zIndex = '5000';
+                    ui.style.opacity = '1';
+                    ui.style.visibility = 'visible';
                     try {
                         ui.innerHTML = `
                             <button onclick="openSkinShop()">Skin Shop</button>
@@ -812,6 +860,13 @@
                             <button onclick="togglePlayerList()">Player List</button>
                         `;
                         console.log('UI buttons rendered: Skin Shop, Weapon Shop, Toggle POV, Report Player, Player List');
+                        console.log('UI dimensions:', { width: ui.offsetWidth, height: ui.offsetHeight });
+                        console.log('UI computed styles:', window.getComputedStyle(ui));
+                        console.log('Parent styles:', window.getComputedStyle(ui.parentElement));
+                        const buttons = ui.querySelectorAll('button');
+                        buttons.forEach((btn, i) => {
+                            console.log(`Button ${i + 1} computed styles:`, window.getComputedStyle(btn));
+                        });
                     } catch (e) {
                         console.error('Error setting ui.innerHTML:', e);
                         alert('UI buttons failed to render. Check console for errors.');

@@ -279,7 +279,7 @@
     <button id="fullscreenBtn" onclick="toggleFullscreen()">Fullscreen</button>
     <div id="loginPage">
         <h1>ConeWorks</h1>
-        <div id="versionDisplay">Version 2.5</div>
+        <div id="versionDisplay">Version 2.6</div>
         <p>Sign in or create an account to brawl and chill!</p>
         <div class="login-container">
             <input id="username" type="text" placeholder="Username">
@@ -307,7 +307,7 @@
     <div id="homePage" style="display: none;">
         <div id="coneconDisplay">Conecons: 0</div>
         <h1>ConeWorks</h1>
-        <div id="versionDisplay">Version 2.5</div>
+        <div id="versionDisplay">Version 2.6</div>
         <p>Create or join epic servers to brawl or chill.</p>
         <div class="game-buttons">
             <button onclick="loadServerPage()">Join Server</button>
@@ -453,7 +453,7 @@
     <script>
         try {
             console.log('Script loaded successfully');
-            let version = 2.5;
+            let version = 2.6;
             let username = null;
             let accounts = JSON.parse(localStorage.getItem('coneWorksAccounts')) || {};
             let servers = JSON.parse(localStorage.getItem('coneWorksServers')) || [];
@@ -480,7 +480,6 @@
             const ui = document.getElementById('ui');
             const coneconDisplay = document.getElementById('coneconDisplay');
             let player = { x: 400, y: 300, z: 0, speed: 5, jumping: false, jumpHeight: 50 };
-
             let isInTestMultiplayer = false;
 
             function resetData() {
@@ -728,8 +727,8 @@
                         ctx.fillStyle = 'white';
                         ctx.font = '12px Arial';
                         ctx.fillText(username, player.x, player.y - player.z - 10);
-                        if (!player.jumping && player.y !== 300) {
-                            player.y = Math.min(Math.max(player.y, 285), 315);
+                        if (!player.jumping) {
+                            player.y = Math.min(Math.max(player.y, 285), 600);
                             player.z = 0;
                         }
                         requestAnimationFrame(gameLoop);
@@ -740,7 +739,7 @@
                                 player.y = Math.max(285, player.y - player.speed);
                             }
                             if (e.key === 's' || e.key === 'ArrowDown') {
-                                player.y = Math.min(315, player.y + player.speed);
+                                player.y = Math.min(600, player.y + player.speed);
                             }
                             if (e.key === 'a' || e.key === 'ArrowLeft') {
                                 player.x = Math.max(0, player.x - player.speed);
@@ -752,16 +751,17 @@
                                 if (!player.jumping) {
                                     player.jumping = true;
                                     let jump = 0;
+                                    const currentY = player.y;
                                     const jumpInterval = setInterval(() => {
                                         jump += 5;
                                         player.z = Math.sin(jump / player.jumpHeight * Math.PI) * player.jumpHeight;
-                                        if (jump >= player.jumpHeight * 2) {
+                                        if (jump >= player.jumpHeight * 1.5) {
                                             player.z = 0;
                                             player.jumping = false;
-                                            player.y = Math.min(Math.max(player.y, 285), 315);
+                                            player.y = Math.min(Math.max(currentY, 285), 600);
                                             clearInterval(jumpInterval);
                                         }
-                                    }, 20);
+                                    }, 15);
                                 }
                             }
                             if (e.key === 'c') {

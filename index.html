@@ -77,16 +77,17 @@
             top: 10px;
             left: 10px;
             z-index: 1000;
-            font-size: 20px;
+            font-size: 24px;
             background: rgba(0, 0, 0, 0.8);
-            padding: 15px;
+            padding: 20px;
             border-radius: 5px;
+            touch-action: auto;
         }
         #ui button {
             margin: 10px;
-            padding: 15px;
-            font-size: 20px;
-            width: 150px;
+            padding: 20px;
+            font-size: 24px;
+            width: 180px;
             text-align: center;
             border-radius: 5px;
         }
@@ -302,7 +303,7 @@
     <button id="fullscreenBtn" onclick="toggleFullscreen()">Fullscreen</button>
     <div id="loginPage">
         <h1>ConeWorks</h1>
-        <div id="versionDisplay">Version 3.1</div>
+        <div id="versionDisplay">Version 3.2</div>
         <p>Sign in or create an account to brawl and chill!</p>
         <div class="login-container">
             <input id="username" type="text" placeholder="Username">
@@ -326,7 +327,7 @@
     <div id="homePage" style="display: none;">
         <div id="coneconDisplay">Conecons: 0</div>
         <h1>ConeWorks</h1>
-        <div id="versionDisplay">Version 3.1</div>
+        <div id="versionDisplay">Version 3.2</div>
         <p>Create or join epic servers to brawl or chill.</p>
         <div class="game-buttons">
             <button onclick="loadServerPage()">Join Server</button>
@@ -488,7 +489,7 @@
     <script>
         try {
             console.log('Script loaded successfully');
-            let version = 3.1;
+            let version = 3.2;
             let username = null;
             let accounts = JSON.parse(localStorage.getItem('coneWorksAccounts')) || {};
             let servers = JSON.parse(localStorage.getItem('coneWorksServers')) || [];
@@ -769,14 +770,24 @@
                     let player = { x: 400, y: 300, z: 0, speed: 5, jumping: false, jumpHeight: 50 };
                     canvas.style.display = 'block';
                     ui.style.display = 'block';
-                    ui.innerHTML = `
-                        <button onclick="openSkinShop()">Skin Shop</button>
-                        <button onclick="openWeaponShop()">Weapon Shop</button>
-                        <button onclick="togglePOV()">Toggle POV</button>
-                        <button onclick="document.getElementById('reportBox').style.display='block'; updateReportPlayerList()">Report Player</button>
-                        <button onclick="togglePlayerList()">Player List</button>
-                    `;
-                    console.log('UI buttons rendered: Skin Shop, Weapon Shop, Toggle POV, Report Player, Player List');
+                    ui.style.position = 'absolute';
+                    ui.style.top = '10px';
+                    ui.style.left = '10px';
+                    ui.style.zIndex = '1000';
+                    console.log('Setting UI styles: display=block, position=absolute, top=10px, left=10px, zIndex=1000');
+                    try {
+                        ui.innerHTML = `
+                            <button onclick="openSkinShop()">Skin Shop</button>
+                            <button onclick="openWeaponShop()">Weapon Shop</button>
+                            <button onclick="togglePOV()">Toggle POV</button>
+                            <button onclick="document.getElementById('reportBox').style.display='block'; updateReportPlayerList()">Report Player</button>
+                            <button onclick="togglePlayerList()">Player List</button>
+                        `;
+                        console.log('UI buttons rendered: Skin Shop, Weapon Shop, Toggle POV, Report Player, Player List');
+                    } catch (e) {
+                        console.error('Error setting ui.innerHTML:', e);
+                        alert('Error rendering UI buttons. Check console.');
+                    }
                     updateShop();
                     updateSkinShop();
                     function gameLoop() {

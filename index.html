@@ -77,17 +77,18 @@
             top: 10px;
             left: 10px;
             z-index: 1000;
-            font-size: 16px;
+            font-size: 20px;
             background: rgba(0, 0, 0, 0.8);
             padding: 15px;
             border-radius: 5px;
         }
         #ui button {
-            margin: 8px;
-            padding: 12px;
-            font-size: 16px;
-            width: 120px;
+            margin: 10px;
+            padding: 15px;
+            font-size: 20px;
+            width: 150px;
             text-align: center;
+            border-radius: 5px;
         }
         #publicChat {
             position: absolute;
@@ -275,6 +276,7 @@
             top: 10px;
             font-size: 20px;
             color: yellow;
+            z-index: 1000;
         }
         #controlsBox {
             display: none;
@@ -300,7 +302,7 @@
     <button id="fullscreenBtn" onclick="toggleFullscreen()">Fullscreen</button>
     <div id="loginPage">
         <h1>ConeWorks</h1>
-        <div id="versionDisplay">Version 3.0</div>
+        <div id="versionDisplay">Version 3.1</div>
         <p>Sign in or create an account to brawl and chill!</p>
         <div class="login-container">
             <input id="username" type="text" placeholder="Username">
@@ -324,7 +326,7 @@
     <div id="homePage" style="display: none;">
         <div id="coneconDisplay">Conecons: 0</div>
         <h1>ConeWorks</h1>
-        <div id="versionDisplay">Version 3.0</div>
+        <div id="versionDisplay">Version 3.1</div>
         <p>Create or join epic servers to brawl or chill.</p>
         <div class="game-buttons">
             <button onclick="loadServerPage()">Join Server</button>
@@ -486,7 +488,7 @@
     <script>
         try {
             console.log('Script loaded successfully');
-            let version = 3.0;
+            let version = 3.1;
             let username = null;
             let accounts = JSON.parse(localStorage.getItem('coneWorksAccounts')) || {};
             let servers = JSON.parse(localStorage.getItem('coneWorksServers')) || [];
@@ -726,6 +728,7 @@
                         document.getElementById('backBtn').style.display = 'block';
                         document.getElementById('homeBtn').style.display = 'none';
                         document.getElementById('publicChat').style.display = 'block';
+                        ui.style.display = 'block';
                         startGame();
                         console.log('Joined server:', currentServer.name, 'Players:', currentServer.players.length);
                     } else {
@@ -767,13 +770,15 @@
                     canvas.style.display = 'block';
                     ui.style.display = 'block';
                     ui.innerHTML = `
-                        <button onclick="document.getElementById('skinBox').style.display='block'">Skin Shop</button>
-                        <button onclick="document.getElementById('shopBox').style.display='block'">Weapon Shop</button>
+                        <button onclick="openSkinShop()">Skin Shop</button>
+                        <button onclick="openWeaponShop()">Weapon Shop</button>
                         <button onclick="togglePOV()">Toggle POV</button>
                         <button onclick="document.getElementById('reportBox').style.display='block'; updateReportPlayerList()">Report Player</button>
                         <button onclick="togglePlayerList()">Player List</button>
                     `;
-                    console.log('UI buttons rendered');
+                    console.log('UI buttons rendered: Skin Shop, Weapon Shop, Toggle POV, Report Player, Player List');
+                    updateShop();
+                    updateSkinShop();
                     function gameLoop() {
                         ctx.clearRect(0, 0, canvas.width, canvas.height);
                         ctx.fillStyle = 'green';
@@ -853,6 +858,90 @@
                 } catch (e) {
                     console.error('Start game error:', e);
                     alert('Error starting game. Check console.');
+                }
+            }
+
+            function openSkinShop() {
+                document.getElementById('skinBox').style.display = 'block';
+                updateSkinShop();
+                console.log('Opened Skin Shop');
+            }
+
+            function openWeaponShop() {
+                document.getElementById('shopBox').style.display = 'block';
+                updateShop();
+                console.log('Opened Weapon Shop');
+            }
+
+            function updateSkinShop() {
+                try {
+                    const skinList = document.getElementById('skinList');
+                    skinList.innerHTML = '';
+                    Object.keys(skins).forEach(skin => {
+                        const div = document.createElement('div');
+                        div.innerHTML = `${skin} (${skins[skin].cost} Conecons) <button onclick="buySkin('${skin}')">Buy</button>`;
+                        skinList.appendChild(div);
+                    });
+                    console.log('Updated Skin Shop');
+                } catch (e) {
+                    console.error('Update skin shop error:', e);
+                    alert('Error updating skin shop. Check console.');
+                }
+            }
+
+            function buySkin(skin) {
+                try {
+                    if (conecon >= skins[skin].cost) {
+                        conecon -= skins[skin].cost;
+                        accounts[username].conecon = conecon;
+                        accounts[username].equippedSkin = skin;
+                        equippedSkin = skin;
+                        localStorage.setItem('coneWorksAccounts', JSON.stringify(accounts));
+                        updateConeconDisplay();
+                        alert(`Purchased and equipped ${skin}!`);
+                        console.log('Bought skin:', skin);
+                    } else {
+                        alert('Not enough Conecons!');
+                    }
+                } catch (e) {
+                    console.error('Buy skin error:', e);
+                    alert('Error buying skin. Check console.');
+                }
+            }
+
+            function updateShop() {
+                try {
+                    const weaponList = document.getElementById('weaponList');
+                    weaponList.innerHTML = '';
+                    Object.keys(weapons).forEach(weapon => {
+                        const div = document.createElement('div');
+                        div.innerHTML = `${weapon} (${weapons[weapon].cost} Conecons) <button onclick="buyWeapon('${weapon}')">Buy</button>`;
+                        weaponList.appendChild(div);
+                    });
+                    console.log('Updated Weapon Shop');
+                } catch (e) {
+                    console.error('Update weapon shop error:', e);
+                    alert('Error updating weapon shop. Check console.');
+                }
+            }
+
+            function buyWeapon(weapon) {
+                try {
+                    if (conecon >= weapons[weapon].cost) {
+                        conecon -= weapons[weapon].cost;
+                        accounts[username].conecon = conecon;
+                        accounts[username].equippedWeapon = weapon;
+                        equippedWeapon = weapon;
+                        localStorage.setItem('coneWorksAccounts', JSON.stringify(accounts));
+                        updateConeconDisplay();
+                        alert(`Purchased and equipped ${weapon}!`);
+                        console.log('Bought weapon:', weapon);
+                    } else {
+                        alert('Not enough Conecons!');
+                    }
+                } catch (e) {
+                    console.error('Buy weapon error:', e);
+                    alert('Error buying weapon. Check console.');
                 }
             }
 
@@ -1284,6 +1373,7 @@
                     document.getElementById('backBtn').style.display = 'none';
                     document.getElementById('homeBtn').style.display = 'block';
                     document.getElementById('publicChat').style.display = 'block';
+                    ui.style.display = 'block';
                     startGame();
                     console.log('Started Test Multiplayer');
                 } catch (e) {

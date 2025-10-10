@@ -279,7 +279,7 @@
     <button id="fullscreenBtn" onclick="toggleFullscreen()">Fullscreen</button>
     <div id="loginPage">
         <h1>ConeWorks</h1>
-        <div id="versionDisplay">Version 2.6</div>
+        <div id="versionDisplay">Version 2.8</div>
         <p>Sign in or create an account to brawl and chill!</p>
         <div class="login-container">
             <input id="username" type="text" placeholder="Username">
@@ -307,7 +307,7 @@
     <div id="homePage" style="display: none;">
         <div id="coneconDisplay">Conecons: 0</div>
         <h1>ConeWorks</h1>
-        <div id="versionDisplay">Version 2.6</div>
+        <div id="versionDisplay">Version 2.8</div>
         <p>Create or join epic servers to brawl or chill.</p>
         <div class="game-buttons">
             <button onclick="loadServerPage()">Join Server</button>
@@ -453,7 +453,7 @@
     <script>
         try {
             console.log('Script loaded successfully');
-            let version = 2.6;
+            let version = 2.8;
             let username = null;
             let accounts = JSON.parse(localStorage.getItem('coneWorksAccounts')) || {};
             let servers = JSON.parse(localStorage.getItem('coneWorksServers')) || [];
@@ -480,7 +480,6 @@
             const ui = document.getElementById('ui');
             const coneconDisplay = document.getElementById('coneconDisplay');
             let player = { x: 400, y: 300, z: 0, speed: 5, jumping: false, jumpHeight: 50 };
-            let isInTestMultiplayer = false;
 
             function resetData() {
                 localStorage.clear();
@@ -576,7 +575,6 @@
                 document.getElementById('homeBtn').style.display = 'none';
                 document.getElementById('publicChat').style.display = 'none';
                 canvas.style.display = 'none';
-                isInTestMultiplayer = false;
                 updateFriendList();
                 console.log('Returned to home page');
             }
@@ -628,7 +626,7 @@
                     tbody.innerHTML = '';
                     servers.forEach(s => {
                         const row = document.createElement('tr');
-                        row.innerHTML = `<td>${s.name}</td><td>${s.mode}</td><td>${s.players.length}</td><td><button onclick="joinServer('${s.name}')">Join</button></td>`;
+                        row.innerHTML = `<td>${s.name}</td><td>${s.mode}</td><td>${s.players ? s.players.length : 0}</td><td><button onclick="joinServer('${s.name}')">Join</button></td>`;
                         tbody.appendChild(row);
                     });
                     console.log('Updated server list:', servers.length, 'servers');
@@ -666,11 +664,12 @@
                             console.log('No servers available for random join');
                             return;
                         }
-                        currentServer = servers.reduce((max, s) => s.players.length > max.players.length ? s : max, servers[0]);
+                        currentServer = servers.reduce((max, s) => (s.players?.length || 0) > (max.players?.length || 0) ? s : max, servers[0]);
                     } else {
                         currentServer = servers.find(s => s.name === name);
                     }
                     if (currentServer) {
+                        if (!currentServer.players) currentServer.players = [];
                         currentServer.players.push(username);
                         localStorage.setItem('coneWorksServers', JSON.stringify(servers));
                         document.getElementById('serverPage').style.display = 'none';
@@ -679,7 +678,6 @@
                         document.getElementById('backBtn').style.display = 'block';
                         document.getElementById('homeBtn').style.display = 'none';
                         document.getElementById('publicChat').style.display = 'block';
-                        isInTestMultiplayer = false;
                         startGame();
                         console.log('Joined server:', currentServer.name, 'Players:', currentServer.players.length);
                     } else {
@@ -722,13 +720,30 @@
                         ctx.clearRect(0, 0, canvas.width, canvas.height);
                         ctx.fillStyle = 'green';
                         ctx.fillRect(0, 300, canvas.width, canvas.height);
-                        ctx.fillStyle = `rgb(${skins[equippedSkin].color[0] * 255}, ${skins[equippedSkin].color[1] * 255}, ${skins[equippedSkin].color[2] * 255})`;
-                        ctx.fillRect(player.x, player.y - player.z, 20, 20);
+                        ctx.strokeStyle = `rgb(${skins[equippedSkin].color[0] * 255}, ${skins[equippedSkin].color[1] * 255}, ${skins[equippedSkin].color[2] * 255})`;
+                        ctx.lineWidth = 2;
+                        ctx.beginPath();
+                        ctx.arc(player.x + 10, player.y - player.z - 5, 5, 0, Math.PI * 2);
+                        ctx.stroke();
+                        ctx.beginPath();
+                        ctx.moveTo(player.x + 10, player.y - player.z);
+                        ctx.lineTo(player.x + 10, player.y - player.z + 15);
+                        ctx.stroke();
+                        ctx.beginPath();
+                        ctx.moveTo(player.x + 5, player.y - player.z + 5);
+                        ctx.lineTo(player.x + 15, player.y - player.z + 5);
+                        ctx.stroke();
+                        ctx.beginPath();
+                        ctx.moveTo(player.x + 10, player.y - player.z + 15);
+                        ctx.lineTo(player.x + 5, player.y - player.z + 25);
+                        ctx.lineTo(player.x + 10, player.y - player.z + 15);
+                        ctx.lineTo(player.x + 15, player.y - player.z + 25);
+                        ctx.stroke();
                         ctx.fillStyle = 'white';
                         ctx.font = '12px Arial';
-                        ctx.fillText(username, player.x, player.y - player.z - 10);
+                        ctx.fillText(username, player.x, player.y - player.z - 15);
                         if (!player.jumping) {
-                            player.y = Math.min(Math.max(player.y, 285), 600);
+                            player.y = Math.min(Math.max(player.y, 285), 450);
                             player.z = 0;
                         }
                         requestAnimationFrame(gameLoop);
@@ -739,7 +754,7 @@
                                 player.y = Math.max(285, player.y - player.speed);
                             }
                             if (e.key === 's' || e.key === 'ArrowDown') {
-                                player.y = Math.min(600, player.y + player.speed);
+                                player.y = Math.min(450, player.y + player.speed);
                             }
                             if (e.key === 'a' || e.key === 'ArrowLeft') {
                                 player.x = Math.max(0, player.x - player.speed);
@@ -754,14 +769,15 @@
                                     const currentY = player.y;
                                     const jumpInterval = setInterval(() => {
                                         jump += 5;
-                                        player.z = Math.sin(jump / player.jumpHeight * Math.PI) * player.jumpHeight;
-                                        if (jump >= player.jumpHeight * 1.5) {
+                                        player.z = Math.sin(jump / (player.jumpHeight * 0.8) * Math.PI) * player.jumpHeight;
+                                        player.y = currentY;
+                                        if (jump >= player.jumpHeight * 1.2) {
                                             player.z = 0;
                                             player.jumping = false;
-                                            player.y = Math.min(Math.max(currentY, 285), 600);
+                                            player.y = Math.min(Math.max(currentY, 285), 450);
                                             clearInterval(jumpInterval);
                                         }
-                                    }, 15);
+                                    }, 10);
                                 }
                             }
                             if (e.key === 'c') {
@@ -954,7 +970,7 @@
 
             function sendPublicMessage() {
                 const msg = document.getElementById('publicChatInput').value.trim();
-                if (msg && (currentServer || isInTestMultiplayer)) {
+                if (msg) {
                     publicMessages.push({ from: username, text: msg, time: new Date().toISOString() });
                     document.getElementById('publicChatInput').value = '';
                     updatePublicChat();
@@ -1068,8 +1084,6 @@
 
             function testMultiplayer() {
                 try {
-                    isInTestMultiplayer = true;
-                    currentServer = null;
                     publicMessages = [];
                     player = { x: 400, y: 300, z: 0, speed: 5, jumping: false, jumpHeight: 50 };
                     document.getElementById('homePage').style.display = 'none';

@@ -279,7 +279,7 @@
     <button id="fullscreenBtn" onclick="toggleFullscreen()">Fullscreen</button>
     <div id="loginPage">
         <h1>ConeWorks</h1>
-        <div id="versionDisplay">Version 2.4</div>
+        <div id="versionDisplay">Version 2.5</div>
         <p>Sign in or create an account to brawl and chill!</p>
         <div class="login-container">
             <input id="username" type="text" placeholder="Username">
@@ -291,7 +291,7 @@
             <div id="controlsBox">
                 <h3>Controls</h3>
                 <ul>
-                    <li><b>WASD</b>: Move (camera-relative)</li>
+                    <li><b>WASD/Arrow Keys</b>: Move (camera-relative)</li>
                     <li><b>Space</b>: Jump</li>
                     <li><b>E</b>: Attack (Fight mode)</li>
                     <li><b>O</b>: Toggle POV (first/third-person)</li>
@@ -307,7 +307,7 @@
     <div id="homePage" style="display: none;">
         <div id="coneconDisplay">Conecons: 0</div>
         <h1>ConeWorks</h1>
-        <div id="versionDisplay">Version 2.4</div>
+        <div id="versionDisplay">Version 2.5</div>
         <p>Create or join epic servers to brawl or chill.</p>
         <div class="game-buttons">
             <button onclick="loadServerPage()">Join Server</button>
@@ -453,7 +453,7 @@
     <script>
         try {
             console.log('Script loaded successfully');
-            let version = 2.4;
+            let version = 2.5;
             let username = null;
             let accounts = JSON.parse(localStorage.getItem('coneWorksAccounts')) || {};
             let servers = JSON.parse(localStorage.getItem('coneWorksServers')) || [];
@@ -480,6 +480,7 @@
             const ui = document.getElementById('ui');
             const coneconDisplay = document.getElementById('coneconDisplay');
             let player = { x: 400, y: 300, z: 0, speed: 5, jumping: false, jumpHeight: 50 };
+
             let isInTestMultiplayer = false;
 
             function resetData() {
@@ -490,6 +491,7 @@
                 localStorage.setItem('coneWorksAccounts', JSON.stringify(accounts));
                 localStorage.setItem('coneWorksServers', JSON.stringify(servers));
                 alert('Data reset! Try logging in with conehead8654.');
+                console.log('Data reset');
             }
 
             function login() {
@@ -577,6 +579,7 @@
                 canvas.style.display = 'none';
                 isInTestMultiplayer = false;
                 updateFriendList();
+                console.log('Returned to home page');
             }
 
             function loadServerPage() {
@@ -584,18 +587,21 @@
                 document.getElementById('serverPage').style.display = 'block';
                 document.getElementById('fullscreenBtn').style.display = 'block';
                 updateServerList();
+                console.log('Loaded server page');
             }
 
             function loadCreateServerPage() {
                 document.getElementById('homePage').style.display = 'none';
                 document.getElementById('createServerPage').style.display = 'block';
                 document.getElementById('fullscreenBtn').style.display = 'block';
+                console.log('Loaded create server page');
             }
 
             function loadSettingsPage() {
                 document.getElementById('homePage').style.display = 'none';
                 document.getElementById('settingsPage').style.display = 'block';
                 document.getElementById('fullscreenBtn').style.display = 'block';
+                console.log('Loaded settings page');
             }
 
             function createServer() {
@@ -606,9 +612,10 @@
                         servers.push({ name, mode, players: [username], owner: username });
                         localStorage.setItem('coneWorksServers', JSON.stringify(servers));
                         joinServer(name);
-                        console.log('Server created:', name);
+                        console.log('Server created:', name, mode);
                     } else {
                         alert('Server name taken or invalid!');
+                        console.log('Failed to create server:', name);
                     }
                 } catch (e) {
                     console.error('Create server error:', e);
@@ -617,27 +624,39 @@
             }
 
             function updateServerList() {
-                const tbody = document.getElementById('serverTableBody');
-                tbody.innerHTML = '';
-                servers.forEach(s => {
-                    const row = document.createElement('tr');
-                    row.innerHTML = `<td>${s.name}</td><td>${s.mode}</td><td>${s.players.length}</td><td><button onclick="joinServer('${s.name}')">Join</button></td>`;
-                    tbody.appendChild(row);
-                });
+                try {
+                    const tbody = document.getElementById('serverTableBody');
+                    tbody.innerHTML = '';
+                    servers.forEach(s => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `<td>${s.name}</td><td>${s.mode}</td><td>${s.players.length}</td><td><button onclick="joinServer('${s.name}')">Join</button></td>`;
+                        tbody.appendChild(row);
+                    });
+                    console.log('Updated server list:', servers.length, 'servers');
+                } catch (e) {
+                    console.error('Update server list error:', e);
+                    alert('Error updating server list. Check console.');
+                }
             }
 
             function updateServerSuggestions() {
-                const search = document.getElementById('serverSearch').value.toLowerCase();
-                const mode = document.getElementById('modeFilter').value;
-                const suggestions = document.getElementById('serverSuggestions');
-                suggestions.innerHTML = '';
-                servers.filter(s => (mode === 'all' || s.mode === mode) && s.name.toLowerCase().includes(search)).slice(0, 5).forEach(s => {
-                    const div = document.createElement('div');
-                    div.className = 'suggestion';
-                    div.textContent = s.name;
-                    div.onclick = () => joinServer(s.name);
-                    suggestions.appendChild(div);
-                });
+                try {
+                    const search = document.getElementById('serverSearch').value.toLowerCase();
+                    const mode = document.getElementById('modeFilter').value;
+                    const suggestions = document.getElementById('serverSuggestions');
+                    suggestions.innerHTML = '';
+                    servers.filter(s => (mode === 'all' || s.mode === mode) && s.name.toLowerCase().includes(search)).slice(0, 5).forEach(s => {
+                        const div = document.createElement('div');
+                        div.className = 'suggestion';
+                        div.textContent = s.name;
+                        div.onclick = () => joinServer(s.name);
+                        suggestions.appendChild(div);
+                    });
+                    console.log('Updated server suggestions');
+                } catch (e) {
+                    console.error('Update server suggestions error:', e);
+                    alert('Error updating suggestions. Check console.');
+                }
             }
 
             function joinServer(name) {
@@ -645,6 +664,7 @@
                     if (name === 'random') {
                         if (servers.length === 0) {
                             alert('No servers available!');
+                            console.log('No servers available for random join');
                             return;
                         }
                         currentServer = servers.reduce((max, s) => s.players.length > max.players.length ? s : max, servers[0]);
@@ -662,9 +682,10 @@
                         document.getElementById('publicChat').style.display = 'block';
                         isInTestMultiplayer = false;
                         startGame();
-                        console.log('Joined server:', currentServer.name);
+                        console.log('Joined server:', currentServer.name, 'Players:', currentServer.players.length);
                     } else {
                         alert('Server not found!');
+                        console.log('Server not found:', name);
                     }
                 } catch (e) {
                     console.error('Join server error:', e);
@@ -695,53 +716,68 @@
             }
 
             function startGame() {
-                canvas.style.display = 'block';
-                function gameLoop() {
-                    ctx.clearRect(0, 0, canvas.width, canvas.height);
-                    ctx.fillStyle = 'green';
-                    ctx.fillRect(0, 300, canvas.width, canvas.height);
-                    ctx.fillStyle = `rgb(${skins[equippedSkin].color[0] * 255}, ${skins[equippedSkin].color[1] * 255}, ${skins[equippedSkin].color[2] * 255})`;
-                    ctx.fillRect(player.x, player.y - player.z, 20, 20);
-                    ctx.fillStyle = 'white';
-                    ctx.font = '12px Arial';
-                    ctx.fillText(username, player.x, player.y - player.z - 10);
-                    if (!player.jumping && player.y !== 300) {
-                        player.y = 300;
-                        player.z = 0;
+                try {
+                    player = { x: 400, y: 300, z: 0, speed: 5, jumping: false, jumpHeight: 50 };
+                    canvas.style.display = 'block';
+                    function gameLoop() {
+                        ctx.clearRect(0, 0, canvas.width, canvas.height);
+                        ctx.fillStyle = 'green';
+                        ctx.fillRect(0, 300, canvas.width, canvas.height);
+                        ctx.fillStyle = `rgb(${skins[equippedSkin].color[0] * 255}, ${skins[equippedSkin].color[1] * 255}, ${skins[equippedSkin].color[2] * 255})`;
+                        ctx.fillRect(player.x, player.y - player.z, 20, 20);
+                        ctx.fillStyle = 'white';
+                        ctx.font = '12px Arial';
+                        ctx.fillText(username, player.x, player.y - player.z - 10);
+                        if (!player.jumping && player.y !== 300) {
+                            player.y = Math.min(Math.max(player.y, 285), 315);
+                            player.z = 0;
+                        }
+                        requestAnimationFrame(gameLoop);
                     }
-                    requestAnimationFrame(gameLoop);
+                    document.addEventListener('keydown', e => {
+                        if (document.activeElement !== document.getElementById('publicChatInput')) {
+                            if (e.key === 'w' || e.key === 'ArrowUp') {
+                                player.y = Math.max(285, player.y - player.speed);
+                            }
+                            if (e.key === 's' || e.key === 'ArrowDown') {
+                                player.y = Math.min(315, player.y + player.speed);
+                            }
+                            if (e.key === 'a' || e.key === 'ArrowLeft') {
+                                player.x = Math.max(0, player.x - player.speed);
+                            }
+                            if (e.key === 'd' || e.key === 'ArrowRight') {
+                                player.x = Math.min(800, player.x + player.speed);
+                            }
+                            if (e.key === ' ') {
+                                if (!player.jumping) {
+                                    player.jumping = true;
+                                    let jump = 0;
+                                    const jumpInterval = setInterval(() => {
+                                        jump += 5;
+                                        player.z = Math.sin(jump / player.jumpHeight * Math.PI) * player.jumpHeight;
+                                        if (jump >= player.jumpHeight * 2) {
+                                            player.z = 0;
+                                            player.jumping = false;
+                                            player.y = Math.min(Math.max(player.y, 285), 315);
+                                            clearInterval(jumpInterval);
+                                        }
+                                    }, 20);
+                                }
+                            }
+                            if (e.key === 'c') {
+                                document.getElementById('publicChat').style.display = document.getElementById('publicChat').style.display === 'none' ? 'block' : 'none';
+                                if (document.getElementById('publicChat').style.display === 'block') {
+                                    document.getElementById('publicChatInput').focus();
+                                }
+                            }
+                        }
+                    });
+                    gameLoop();
+                    console.log('Game started');
+                } catch (e) {
+                    console.error('Start game error:', e);
+                    alert('Error starting game. Check console.');
                 }
-                document.addEventListener('keydown', e => {
-                    if (document.activeElement !== document.getElementById('publicChatInput')) {
-                        if (e.key === 'w') player.y = Math.max(300, player.y - player.speed);
-                        if (e.key === 's') player.y = Math.max(300, player.y + player.speed);
-                        if (e.key === 'a') player.x = Math.max(0, player.x - player.speed);
-                        if (e.key === 'd') player.x = Math.min(800, player.x + player.speed);
-                        if (e.key === ' ') {
-                            if (!player.jumping) {
-                                player.jumping = true;
-                                let jump = 0;
-                                const jumpInterval = setInterval(() => {
-                                    jump += 5;
-                                    player.z = Math.sin(jump / player.jumpHeight * Math.PI) * player.jumpHeight;
-                                    if (jump >= player.jumpHeight * 2) {
-                                        player.z = 0;
-                                        player.jumping = false;
-                                        player.y = 300;
-                                        clearInterval(jumpInterval);
-                                    }
-                                }, 20);
-                            }
-                        }
-                        if (e.key === 'c') {
-                            document.getElementById('publicChat').style.display = document.getElementById('publicChat').style.display === 'none' ? 'block' : 'none';
-                            if (document.getElementById('publicChat').style.display === 'block') {
-                                document.getElementById('publicChatInput').focus();
-                            }
-                        }
-                    }
-                });
-                gameLoop();
             }
 
             function toggleFullscreen() {
@@ -794,16 +830,22 @@
             }
 
             function updateFriendSuggestions() {
-                const search = document.getElementById('friendSearch').value.toLowerCase();
-                const suggestions = document.getElementById('friendSuggestions');
-                suggestions.innerHTML = '';
-                Object.keys(accounts).filter(u => u !== username && u.toLowerCase().includes(search) && !friends.includes(u)).slice(0, 5).forEach(u => {
-                    const div = document.createElement('div');
-                    div.className = 'suggestion';
-                    div.textContent = u;
-                    div.onclick = () => document.getElementById('friendSearch').value = u;
-                    suggestions.appendChild(div);
-                });
+                try {
+                    const search = document.getElementById('friendSearch').value.toLowerCase();
+                    const suggestions = document.getElementById('friendSuggestions');
+                    suggestions.innerHTML = '';
+                    Object.keys(accounts).filter(u => u !== username && u.toLowerCase().includes(search) && !friends.includes(u)).slice(0, 5).forEach(u => {
+                        const div = document.createElement('div');
+                        div.className = 'suggestion';
+                        div.textContent = u;
+                        div.onclick = () => document.getElementById('friendSearch').value = u;
+                        suggestions.appendChild(div);
+                    });
+                    console.log('Updated friend suggestions');
+                } catch (e) {
+                    console.error('Update friend suggestions error:', e);
+                    alert('Error updating friend suggestions. Check console.');
+                }
             }
 
             function sendFriendRequest() {
@@ -867,20 +909,32 @@
             }
 
             function updateFriendList() {
-                const friendList = document.getElementById('friendList');
-                friendList.innerHTML = '<h3>Friends</h3>' + friends.map(f => `<div>${f}</div>`).join('');
-                const friendRequests = document.getElementById('friendRequests');
-                friendRequests.innerHTML = '<h3>Friend Requests</h3>' + (friendRequestsReceived.length ? friendRequestsReceived.map(r => `<div>${r} <button onclick="acceptFriendRequest('${r}')">Accept</button><button onclick="rejectFriendRequest('${r}')">Reject</button></div>`).join('') : '<div>No pending requests</div>');
+                try {
+                    const friendList = document.getElementById('friendList');
+                    friendList.innerHTML = '<h3>Friends</h3>' + (friends.length ? friends.map(f => `<div>${f}</div>`).join('') : '<div>No friends yet</div>');
+                    const friendRequests = document.getElementById('friendRequests');
+                    friendRequests.innerHTML = '<h3>Friend Requests</h3>' + (friendRequestsReceived.length ? friendRequestsReceived.map(r => `<div>${r} <button onclick="acceptFriendRequest('${r}')">Accept</button><button onclick="rejectFriendRequest('${r}')">Reject</button></div>`).join('') : '<div>No pending requests</div>');
+                    console.log('Updated friend list and requests');
+                } catch (e) {
+                    console.error('Update friend list error:', e);
+                    alert('Error updating friend list. Check console.');
+                }
             }
 
             function updatePlayerList() {
-                const tbody = document.getElementById('playerList');
-                tbody.innerHTML = '';
-                Object.keys(accounts).filter(u => u !== username).forEach(u => {
-                    const row = document.createElement('tr');
-                    row.innerHTML = `<td>${u}</td><td>${accounts[u].wins || 0}</td><td>${accounts[u].conecon || 0}</td><td><button onclick="sendFriendRequestTo('${u}')">Add Friend</button></td>`;
-                    tbody.appendChild(row);
-                });
+                try {
+                    const tbody = document.getElementById('playerList');
+                    tbody.innerHTML = '';
+                    Object.keys(accounts).filter(u => u !== username).forEach(u => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `<td>${u}</td><td>${accounts[u].wins || 0}</td><td>${accounts[u].conecon || 0}</td><td><button onclick="sendFriendRequestTo('${u}')">Add Friend</button></td>`;
+                        tbody.appendChild(row);
+                    });
+                    console.log('Updated player list');
+                } catch (e) {
+                    console.error('Update player list error:', e);
+                    alert('Error updating player list. Check console.');
+                }
             }
 
             function sendFriendRequestTo(user) {
@@ -972,6 +1026,7 @@
                             messages = JSON.parse(localStorage.getItem('coneWorksMessages')) || [];
                             servers = JSON.parse(localStorage.getItem('coneWorksServers')) || [];
                             alert('Data restored! Try logging in.');
+                            console.log('Data restored');
                         } catch (e) {
                             console.error('Restore error:', e);
                             alert('Error restoring data. Check console.');
@@ -982,21 +1037,27 @@
             }
 
             function deleteAccount() {
-                const user = document.getElementById('deleteUsername').value.trim();
-                const pass = document.getElementById('deletePassword').value;
-                const userLower = user.toLowerCase();
-                const matchedUser = Object.keys(accounts).find(u => u.toLowerCase() === userLower);
-                if (matchedUser && matchedUser === username && accounts[matchedUser].password === pass) {
-                    delete accounts[matchedUser];
-                    localStorage.setItem('coneWorksAccounts', JSON.stringify(accounts));
-                    username = null;
-                    document.getElementById('deleteAccountBox').style.display = 'none';
-                    document.getElementById('settingsPage').style.display = 'none';
-                    document.getElementById('loginPage').style.display = 'block';
-                    document.getElementById('fullscreenBtn').style.display = 'block';
-                    alert('Account deleted!');
-                } else {
-                    alert('Invalid username or password!');
+                try {
+                    const user = document.getElementById('deleteUsername').value.trim();
+                    const pass = document.getElementById('deletePassword').value;
+                    const userLower = user.toLowerCase();
+                    const matchedUser = Object.keys(accounts).find(u => u.toLowerCase() === userLower);
+                    if (matchedUser && matchedUser === username && accounts[matchedUser].password === pass) {
+                        delete accounts[matchedUser];
+                        localStorage.setItem('coneWorksAccounts', JSON.stringify(accounts));
+                        username = null;
+                        document.getElementById('deleteAccountBox').style.display = 'none';
+                        document.getElementById('settingsPage').style.display = 'none';
+                        document.getElementById('loginPage').style.display = 'block';
+                        document.getElementById('fullscreenBtn').style.display = 'block';
+                        alert('Account deleted!');
+                        console.log('Account deleted:', matchedUser);
+                    } else {
+                        alert('Invalid username or password!');
+                    }
+                } catch (e) {
+                    console.error('Delete account error:', e);
+                    alert('Error deleting account. Check console.');
                 }
             }
 
@@ -1010,6 +1071,7 @@
                     isInTestMultiplayer = true;
                     currentServer = null;
                     publicMessages = [];
+                    player = { x: 400, y: 300, z: 0, speed: 5, jumping: false, jumpHeight: 50 };
                     document.getElementById('homePage').style.display = 'none';
                     canvas.style.display = 'block';
                     document.getElementById('fullscreenBtn').style.display = 'block';
@@ -1033,6 +1095,7 @@
             document.getElementById('fullscreenBtn').style.display = 'block';
             updateConeconDisplay();
             updateFriendList();
+            console.log('Game initialized, version:', version);
         } catch (e) {
             console.error('Script initialization error:', e);
             alert('Error loading game. Check console.');

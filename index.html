@@ -35,13 +35,13 @@
             align-items: center;
         }
         .game-buttons { flex-direction: row; flex-wrap: wrap; }
-        input, button, select, slider {
+        input, button, select {
             padding: 10px;
             font-size: 1.1em;
             border: none;
             border-radius: 5px;
         }
-        input, select, slider {
+        input, select {
             width: 200px;
             background: #fff;
             color: #333;
@@ -215,6 +215,21 @@
             cursor: pointer;
             z-index: 10;
         }
+        #coneconDisplay {
+            position: absolute;
+            top: 10px;
+            font-size: 20px;
+            color: yellow;
+        }
+        #controlsBox {
+            display: none;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 10px;
+            text-align: left;
+            max-width: 300px;
+        }
     </style>
 </head>
 <body>
@@ -226,9 +241,24 @@
             <input id="password" type="password" placeholder="Password">
             <button onclick="login()">Login</button>
             <button onclick="signup()">Sign Up</button>
+            <button onclick="toggleControls()">Show Controls</button>
+            <div id="controlsBox">
+                <h3>Controls</h3>
+                <ul>
+                    <li><b>WASD</b>: Move (camera-relative)</li>
+                    <li><b>Space</b>: Jump</li>
+                    <li><b>E</b>: Attack (Fight mode)</li>
+                    <li><b>O</b>: Toggle POV (first/third-person)</li>
+                    <li><b>C</b>: Toggle server chat</li>
+                    <li><b>R</b>: Report/ban player (Conehead8654 only)</li>
+                    <li><b>P</b>: Open weapon shop</li>
+                    <li><b>K</b>: Open skin shop</li>
+                </ul>
+            </div>
         </div>
     </div>
     <div id="homePage" style="display: none;">
+        <div id="coneconDisplay"></div>
         <h1>ConeWorks</h1>
         <p>Create or join epic servers to brawl or chill. Unblocked for Trinity Heights.</p>
         <div class="game-buttons">
@@ -237,6 +267,7 @@
             <button onclick="toggleChatBox()">Chat & Friends</button>
             <button onclick="loadSettingsPage()">Settings</button>
         </div>
+        <p>Earn 1 Conecon per minute in-game to buy skins and weapons!</p>
     </div>
     <div id="serverPage" style="display: none;">
         <h1>Join a Server</h1>
@@ -356,19 +387,34 @@
         let lastMapSwitch = Date.now();
         let firstPerson = false;
         let defaultPOV = localStorage.getItem('coneWorksDefaultPOV') || 'third';
-        let mouseSensitivity = localStorage.getItem('coneWorksMouseSensitivity') || 0.002;
+        let mouseSensitivity = parseFloat(localStorage.getItem('coneWorksMouseSensitivity')) || 0.002;
         let currencyDisplay = localStorage.getItem('coneWorksCurrencyDisplay') || 'top-left';
         let yaw = 0, pitch = 0;
         let serverMode = 'fight';
-        let conecon = localStorage.getItem('coneWorksConecon') || 0;
+        let conecon = parseInt(localStorage.getItem('coneWorksConecon')) || 0;
         let equippedSkin = 'default-boy';
         let equippedWeapon = 'fist';
-        let skins = { 'default-boy': 0, 'default-girl': 0, 'ninja-boy': 50, 'princess-girl': 75, 'robot-boy': 100, 'warrior-girl': 150 };
-        let weapons = { 'fist': 0, 'sword': 20, 'gun': 50, 'laser': 100 };
+        let skins = {
+            'default-boy': { cost: 0, color: [1, 0, 0, 1] },
+            'default-girl': { cost: 0, color: [1, 0.5, 0.5, 1] },
+            'ninja-boy': { cost: 50, color: [0.2, 0.2, 0.2, 1] },
+            'princess-girl': { cost: 75, color: [1, 0.8, 0.8, 1] },
+            'robot-boy': { cost: 100, color: [0.5, 0.5, 0.5, 1] },
+            'warrior-girl': { cost: 150, color: [0.7, 0.2, 0.2, 1] }
+        };
+        let weapons = {
+            'fist': { cost: 0, damage: 10 },
+            'sword': { cost: 20, damage: 20 },
+            'gun': { cost: 50, damage: 30 },
+            'laser': { cost: 100, damage: 40 }
+        };
         let currencyTimer = Date.now();
         const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
         const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
-        if (!gl) alert('WebGL not supported. Try Chrome incognito.');
+        if (!gl) {
+            alert('WebGL not supported. Try Chrome in incognito mode or a different browser.');
+        }
         const ui = document.getElementById('ui');
         const publicChat = document.getElementById('publicChat');
         const publicChatMessages = document.getElementById('publicChatMessages');
@@ -388,6 +434,7 @@
         const reportPlayer = document.getElementById('reportPlayer');
         const shopBox = document.getElementById('shopBox');
         const skinBox = document.getElementById('skinBox');
+        const coneconDisplay = document.getElementById('coneconDisplay');
         let publicChatVisible = true;
 
         // Login & Signup
@@ -406,6 +453,7 @@
                 document.getElementById('homePage').style.display = 'block';
                 updateFriends();
                 updateChat();
+                updateConeconDisplay();
             } else {
                 alert('Invalid username or password!');
             }
@@ -428,6 +476,7 @@
                 document.getElementById('homePage').style.display = 'block';
                 updateFriends();
                 updateChat();
+                updateConeconDisplay();
             } else if (user === 'Conehead8654') {
                 alert('Username "Conehead8654" is reserved!');
             } else {
@@ -435,105 +484,39 @@
             }
         }
 
-        // Navigation
-        function showHome() {
-            currentGame = null;
-            currentServer = null;
-            serverOwner = null;
-            canvas.style.display = 'none';
-            ui.style.display = 'none';
-            publicChat.style.display = 'none';
-            chatBox.style.display = 'none';
-            friendBox.style.display = 'none';
-            voteBox.style.display = 'none';
-            reportBox.style.display = 'none';
-            shopBox.style.display = 'none';
-            skinBox.style.display = 'none';
-            document.getElementById('fullscreenBtn').style.display = 'none';
-            document.getElementById('homePage').style.display = 'block';
-            document.getElementById('serverPage').style.display = 'none';
-            document.getElementById('createServerPage').style.display = 'none';
-            document.getElementById('settingsPage').style.display = 'none';
-            updateChat();
+        // Conecon Display
+        function updateConeconDisplay() {
+            coneconDisplay.style.left = currencyDisplay === 'top-left' ? '10px' : '';
+            coneconDisplay.style.right = currencyDisplay === 'top-right' ? '10px' : '';
+            coneconDisplay.textContent = `Conecon: ${conecon}`;
         }
 
-        function loadServerPage() {
-            document.getElementById('homePage').style.display = 'none';
-            document.getElementById('serverPage').style.display = 'block';
-            updateServerSuggestions();
+        // Controls
+        function toggleControls() {
+            const controlsBox = document.getElementById('controlsBox');
+            controlsBox.style.display = controlsBox.style.display === 'none' ? 'block' : 'none';
         }
 
-        function loadCreateServerPage() {
-            document.getElementById('homePage').style.display = 'none';
-            document.getElementById('createServerPage').style.display = 'block';
-        }
-
-        function loadSettingsPage() {
-            document.getElementById('homePage').style.display = 'none';
-            document.getElementById('settingsPage').style.display = 'block';
-            document.getElementById('defaultPOV').value = defaultPOV;
-            document.getElementById('mouseSensitivity').value = mouseSensitivity;
-            document.getElementById('currencyDisplay').value = currencyDisplay;
-        }
-
-        function saveSettings() {
-            defaultPOV = document.getElementById('defaultPOV').value;
-            mouseSensitivity = parseFloat(document.getElementById('mouseSensitivity').value);
-            currencyDisplay = document.getElementById('currencyDisplay').value;
-            localStorage.setItem('coneWorksDefaultPOV', defaultPOV);
-            localStorage.setItem('coneWorksMouseSensitivity', mouseSensitivity);
-            localStorage.setItem('coneWorksCurrencyDisplay', currencyDisplay);
-            showHome();
-        }
-
-        // Currency Timer
-        function updateCurrency() {
-            if (currentGame === 'game') {
-                if (Date.now() - currencyTimer > 60000) { // 1 minute
-                    conecon = parseInt(conecon) + 1;
-                    accounts[username].conecon = conecon;
-                    localStorage.setItem('coneWorksAccounts', JSON.stringify(accounts));
-                    currencyTimer = Date.now();
-                }
-            }
-        }
-
-        // Fullscreen
-        function toggleFullscreen() {
-            if (canvas.requestFullscreen) {
-                canvas.requestFullscreen();
-            } else if (canvas.mozRequestFullScreen) {
-                canvas.mozRequestFullScreen();
-            } else if (canvas.webkitRequestFullscreen) {
-                canvas.webkitRequestFullscreen();
-            } else if (canvas.msRequestFullscreen) {
-                canvas.msRequestFullscreen();
-            }
-        }
-
-        // Chat & Friends (unchanged from previous, for brevity)
-        function toggleChatBox() {
-            chatBox.style.display = chatBox.style.display === 'none' ? 'block' : 'none';
-            friendBox.style.display = 'none';
-            updateChat();
-        }
-
-        function toggleFriendBox() {
-            friendBox.style.display = friendBox.style.display === 'none' ? 'block' : 'none';
-            chatBox.style.display = 'none';
-            updateFriends();
+        // Friends
+        function updateFriends() {
+            friendList.innerHTML = friends.length
+                ? friends.map(f => `<div>${f} <button onclick="removeFriend('${f}')">Remove</button></div>`).join('')
+                : 'No friends yet!';
+            friendRequests.innerHTML = friendRequestsReceived.length
+                ? friendRequestsReceived.map(r => `<div>${r.from} <button onclick="acceptFriend('${r.from}')">Accept</button> <button onclick="rejectFriend('${r.from}')">Reject</button></div>`).join('')
+                : 'No friend requests!';
         }
 
         function updateFriendSuggestions() {
-            const query = friendSearch.value.toLowerCase().trim();
+            const query = friendSearch && friendSearch.value ? friendSearch.value.toLowerCase().trim() : '';
             friendSuggestions.innerHTML = query ? Object.keys(accounts)
                 .filter(p => p.toLowerCase().includes(query) && p !== username && !friends.includes(p) && !friendRequestsSent.includes(p))
-                .map(p => `<div class="suggestion" onclick="friendSearch.value='${p}'; friendSuggestions.innerHTML=''; sendFriendRequest()">${p}</div>`)
+                .map(p => `<div class="suggestion" onclick="friendSearch.value='${p}'; friendSuggestions.innerHTML=''">${p}</div>`)
                 .join('') : '';
         }
 
         function sendFriendRequest() {
-            const target = friendSearch.value.trim();
+            const target = friendSearch && friendSearch.value ? friendSearch.value.trim() : '';
             if (target && target !== username && accounts[target] && !friends.includes(target) && !friendRequestsSent.includes(target)) {
                 friendRequestsSent.push(target);
                 accounts[username].requestsSent = friendRequestsSent;
@@ -575,8 +558,99 @@
             updateFriends();
         }
 
+        // Navigation
+        function showHome() {
+            currentGame = null;
+            currentServer = null;
+            serverOwner = null;
+            canvas.style.display = 'none';
+            ui.style.display = 'none';
+            publicChat.style.display = 'none';
+            chatBox.style.display = 'none';
+            friendBox.style.display = 'none';
+            voteBox.style.display = 'none';
+            reportBox.style.display = 'none';
+            shopBox.style.display = 'none';
+            skinBox.style.display = 'none';
+            document.getElementById('fullscreenBtn').style.display = 'none';
+            document.getElementById('backBtn').style.display = 'none';
+            document.getElementById('homePage').style.display = 'block';
+            document.getElementById('serverPage').style.display = 'none';
+            document.getElementById('createServerPage').style.display = 'none';
+            document.getElementById('settingsPage').style.display = 'none';
+            updateChat();
+            updateFriends();
+            updateConeconDisplay();
+        }
+
+        function loadServerPage() {
+            document.getElementById('homePage').style.display = 'none';
+            document.getElementById('serverPage').style.display = 'block';
+            updateServerSuggestions();
+        }
+
+        function loadCreateServerPage() {
+            document.getElementById('homePage').style.display = 'none';
+            document.getElementById('createServerPage').style.display = 'block';
+        }
+
+        function loadSettingsPage() {
+            document.getElementById('homePage').style.display = 'none';
+            document.getElementById('settingsPage').style.display = 'block';
+            document.getElementById('defaultPOV').value = defaultPOV;
+            document.getElementById('mouseSensitivity').value = mouseSensitivity;
+            document.getElementById('currencyDisplay').value = currencyDisplay;
+        }
+
+        function saveSettings() {
+            defaultPOV = document.getElementById('defaultPOV').value;
+            mouseSensitivity = parseFloat(document.getElementById('mouseSensitivity').value);
+            currencyDisplay = document.getElementById('currencyDisplay').value;
+            localStorage.setItem('coneWorksDefaultPOV', defaultPOV);
+            localStorage.setItem('coneWorksMouseSensitivity', mouseSensitivity);
+            localStorage.setItem('coneWorksCurrencyDisplay', currencyDisplay);
+            showHome();
+        }
+
+        // Currency
+        function updateCurrency() {
+            if (currentGame === 'game') {
+                if (Date.now() - currencyTimer >= 60000) {
+                    conecon += 1;
+                    accounts[username].conecon = conecon;
+                    localStorage.setItem('coneWorksAccounts', JSON.stringify(accounts));
+                    currencyTimer = Date.now();
+                    updateConeconDisplay();
+                }
+            }
+        }
+
+        // Fullscreen
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                canvas.requestFullscreen();
+                document.getElementById('fullscreenBtn').textContent = 'Exit Fullscreen';
+            } else {
+                document.exitFullscreen();
+                document.getElementById('fullscreenBtn').textContent = 'Fullscreen';
+            }
+        }
+
+        // Chat
+        function toggleChatBox() {
+            chatBox.style.display = chatBox.style.display === 'none' ? 'block' : 'none';
+            friendBox.style.display = 'none';
+            updateChat();
+        }
+
+        function toggleFriendBox() {
+            friendBox.style.display = friendBox.style.display === 'none' ? 'block' : 'none';
+            chatBox.style.display = 'none';
+            updateFriends();
+        }
+
         function sendMessage() {
-            const text = chatInput.value.trim();
+            const text = chatInput && chatInput.value ? chatInput.value.trim() : '';
             if (text && friends.length) {
                 messages.push({ from: username, text, timestamp: Date.now() });
                 localStorage.setItem('coneWorksMessages', JSON.stringify(messages));
@@ -610,7 +684,7 @@
         }
 
         function sendPublicMessage() {
-            const text = publicChatInput.value.trim();
+            const text = publicChatInput && publicChatInput.value ? publicChatInput.value.trim() : '';
             if (text && currentServer) {
                 publicMessages.push({ from: username, text, server: currentServer });
                 publicChatInput.value = '';
@@ -628,7 +702,7 @@
 
         // Server Management
         function updateServerSuggestions() {
-            const query = document.getElementById('serverSearch').value.toLowerCase().trim();
+            const query = serverSearch && serverSearch.value ? serverSearch.value.toLowerCase().trim() : '';
             const mode = document.getElementById('modeFilter').value;
             document.getElementById('serverSuggestions').innerHTML = query ? servers
                 .filter(s => s.name.toLowerCase().includes(query) && (mode === 'all' || s.mode === mode))
@@ -668,6 +742,7 @@
             ui.style.display = 'block';
             publicChat.style.display = publicChatVisible ? 'block' : 'none';
             document.getElementById('fullscreenBtn').style.display = 'block';
+            document.getElementById('backBtn').style.display = 'block';
             initGame();
             updatePublicChat();
             currencyTimer = Date.now();
@@ -687,6 +762,7 @@
             shopBox.style.display = 'none';
             skinBox.style.display = 'none';
             document.getElementById('fullscreenBtn').style.display = 'none';
+            document.getElementById('backBtn').style.display = 'none';
             showHome();
         }
 
@@ -742,43 +818,49 @@
             if (serverMode === 'fight') {
                 shopBox.style.display = 'block';
                 document.getElementById('weaponList').innerHTML = Object.entries(weapons)
-                    .map(([name, cost]) => `<div>${name} - ${cost} Conecon <button onclick="buyWeapon('${name}', ${cost})">${accounts[username].equippedWeapon === name ? 'Equipped' : 'Buy'}</button></div>`)
+                    .map(([name, { cost, damage }]) => `<div>${name} (+${damage} damage) - ${cost} Conecon <button onclick="buyWeapon('${name}', ${cost})">${accounts[username].equippedWeapon === name ? 'Equipped' : 'Buy'}</button></div>`)
                     .join('');
             }
         }
 
         function buyWeapon(name, cost) {
-            if (conecon >= cost && !weapons[name].owned) {
+            if (conecon >= cost && accounts[username].equippedWeapon !== name) {
                 conecon -= cost;
                 accounts[username].equippedWeapon = name;
                 accounts[username].conecon = conecon;
                 localStorage.setItem('coneWorksAccounts', JSON.stringify(accounts));
                 openShop();
+                updateConeconDisplay();
             } else if (accounts[username].equippedWeapon !== name) {
                 accounts[username].equippedWeapon = name;
                 localStorage.setItem('coneWorksAccounts', JSON.stringify(accounts));
                 openShop();
+            } else {
+                alert('Already equipped or not enough Conecon!');
             }
         }
 
         function openSkinShop() {
             skinBox.style.display = 'block';
             document.getElementById('skinList').innerHTML = Object.entries(skins)
-                .map(([name, cost]) => `<div>${name} - ${cost} Conecon <button onclick="buySkin('${name}', ${cost})">${accounts[username].equippedSkin === name ? 'Equipped' : 'Buy'}</button></div>`)
+                .map(([name, { cost, color }]) => `<div>${name} - ${cost} Conecon <button onclick="buySkin('${name}', ${cost})">${accounts[username].equippedSkin === name ? 'Equipped' : 'Buy'}</button></div>`)
                 .join('');
         }
 
         function buySkin(name, cost) {
-            if (conecon >= cost && !skins[name].owned) {
+            if (conecon >= cost && accounts[username].equippedSkin !== name) {
                 conecon -= cost;
                 accounts[username].equippedSkin = name;
                 accounts[username].conecon = conecon;
                 localStorage.setItem('coneWorksAccounts', JSON.stringify(accounts));
                 openSkinShop();
+                updateConeconDisplay();
             } else if (accounts[username].equippedSkin !== name) {
                 accounts[username].equippedSkin = name;
                 localStorage.setItem('coneWorksAccounts', JSON.stringify(accounts));
                 openSkinShop();
+            } else {
+                alert('Already equipped or not enough Conecon!');
             }
         }
 
@@ -804,7 +886,9 @@
             }
         });
         window.addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; });
-        canvas.addEventListener('click', () => canvas.requestPointerLock());
+        canvas.addEventListener('click', () => {
+            if (currentGame === 'game') canvas.requestPointerLock();
+        });
         canvas.addEventListener('mousemove', (e) => {
             if (currentGame === 'game' && document.pointerLockElement === canvas) {
                 yaw -= e.movementX * mouseSensitivity;
@@ -815,13 +899,14 @@
 
         // Game
         function initGame() {
+            if (!gl) return;
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
             gl.viewport(0, 0, canvas.width, canvas.height);
             window.addEventListener('resize', () => {
                 canvas.width = window.innerWidth;
                 canvas.height = window.innerHeight;
-                gl.viewport(0, 0, canvas.width, canvas.height);
+                if (gl) gl.viewport(0, 0, canvas.width, canvas.height);
             });
 
             const vsSource = `
@@ -842,12 +927,21 @@
                 const shader = gl.createShader(type);
                 gl.shaderSource(shader, source);
                 gl.compileShader(shader);
+                if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+                    console.error('Shader compile error:', gl.getShaderInfoLog(shader));
+                    gl.deleteShader(shader);
+                    return null;
+                }
                 return shader;
             }
             const shaderProgram = gl.createProgram();
             gl.attachShader(shaderProgram, loadShader(gl.VERTEX_SHADER, vsSource));
             gl.attachShader(shaderProgram, loadShader(gl.FRAGMENT_SHADER, fsSource));
             gl.linkProgram(shaderProgram);
+            if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
+                console.error('Program link error:', gl.getProgramInfoLog(shaderProgram));
+                return;
+            }
             gl.useProgram(shaderProgram);
 
             const positionLocation = gl.getAttribLocation(shaderProgram, 'aPosition');
@@ -857,68 +951,105 @@
             const projectionMatrixLoc = gl.getUniformLocation(shaderProgram, 'uProjectionMatrix');
 
             // Baseplate
-            const baseplatePositions = [-20, 0, -20, 20, 0, -20, 20, 0, 20, -20, 0, 20];
-            const baseplateNormals = [0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0];
-            const baseplateColors = Array(12).fill(0).flatMap(() => [0.3, 0.5, 0.3, 1]); // Green baseplate
+            const baseplatePositions = new Float32Array([
+                -20, 0, -20, 20, 0, -20, 20, 0, 20,
+                -20, 0, -20, 20, 0, 20, -20, 0, 20
+            ]);
+            const baseplateNormals = new Float32Array(Array(baseplatePositions.length / 3).fill(0).flatMap(() => [0, 1, 0]));
+            const baseplateColors = new Float32Array(Array(baseplatePositions.length / 3).fill(0).flatMap(() => [0.3, 0.5, 0.3, 1]));
+            const baseplateBuffer = gl.createBuffer();
+            const baseplateNormalBuffer = gl.createBuffer();
+            const baseplateColorBuffer = gl.createBuffer();
 
-            // Player Models (simple humanoid with head, body, arms, legs)
-            const headPositions = [-0.3, 1.2, -0.3, 0.3, 1.2, -0.3, 0.3, 1.5, -0.3, -0.3, 1.5, -0.3];
-            const headNormals = [0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1];
-            const bodyPositions = [-0.4, 0.5, -0.4, 0.4, 0.5, -0.4, 0.4, 1.0, -0.4, -0.4, 1.0, -0.4];
-            const bodyNormals = [0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1];
-            // Arms and legs similar, omitted for brevity
-
-            players[username] = { x: 0, y: 2, z: 0, vx: 0, vy: 0, vz: 0, health: serverMode === 'fight' ? 100 : null, wins: accounts[username].wins || 0, color: [1, 0, 0, 1], username: username, skin: equippedSkin, weapon: equippedWeapon };
-            for (let i = 1; i < 4; i++) {
-                if (!players['Bot' + i]) players['Bot' + i] = { x: i * 3 - 4.5, y: 2, z: i * 3 - 4.5, vx: 0, vy: 0, vz: 0, health: serverMode === 'fight' ? 100 : null, wins: 0, color: [0, i / 3, 1 - i / 3, 1], username: 'Bot' + i, skin: 'default-boy', weapon: 'fist' };
+            // Player Models
+            function getPlayerModel(skin) {
+                const head = [
+                    -0.3, 1.2, -0.3, 0.3, 1.2, -0.3, 0.3, 1.5, -0.3,
+                    -0.3, 1.2, -0.3, 0.3, 1.5, -0.3, -0.3, 1.5, -0.3
+                ];
+                const body = [
+                    -0.4, 0.5, -0.4, 0.4, 0.5, -0.4, 0.4, 1.0, -0.4,
+                    -0.4, 0.5, -0.4, 0.4, 1.0, -0.4, -0.4, 1.0, -0.4
+                ];
+                const leftArm = [
+                    -0.6, 0.5, -0.1, -0.4, 0.5, -0.1, -0.4, 1.0, -0.1,
+                    -0.6, 0.5, -0.1, -0.4, 1.0, -0.1, -0.6, 1.0, -0.1
+                ];
+                const rightArm = [
+                    0.4, 0.5, -0.1, 0.6, 0.5, -0.1, 0.6, 1.0, -0.1,
+                    0.4, 0.5, -0.1, 0.6, 1.0, -0.1, 0.4, 1.0, -0.1
+                ];
+                const leftLeg = [
+                    -0.2, 0, -0.6, -0.2, 0.5, -0.6, 0.2, 0.5, -0.6,
+                    -0.2, 0, -0.6, 0.2, 0.5, -0.6, 0.2, 0, -0.6
+                ];
+                const rightLeg = [
+                    -0.2, 0, 0.6, -0.2, 0.5, 0.6, 0.2, 0.5, 0.6,
+                    -0.2, 0, 0.6, 0.2, 0.5, 0.6, 0.2, 0, 0.6
+                ];
+                return new Float32Array([...head, ...body, ...leftArm, ...rightArm, ...leftLeg, ...rightLeg]);
             }
+
+            players[username] = {
+                x: 0, y: 2, z: 0, vx: 0, vy: 0, vz: 0,
+                health: serverMode === 'fight' ? 100 : null,
+                wins: accounts[username].wins || 0,
+                color: skins[equippedSkin].color,
+                username: username,
+                skin: equippedSkin,
+                weapon: equippedWeapon
+            };
 
             function gameUpdate() {
                 updateCurrency();
+                const player = players[username];
                 const speed = 0.1;
                 const gravity = 0.05;
-                const player = players[username];
-                const forward = [Math.sin(yaw) * Math.cos(pitch), 0, Math.cos(yaw) * Math.cos(pitch)];
+                const forward = [Math.sin(yaw), 0, Math.cos(yaw)];
                 const right = [Math.cos(yaw), 0, -Math.sin(yaw)];
+                player.vx = 0;
+                player.vz = 0;
                 if (keys['w'] || keys['arrowup']) { player.vx += forward[0] * speed; player.vz += forward[2] * speed; }
                 if (keys['s'] || keys['arrowdown']) { player.vx -= forward[0] * speed; player.vz -= forward[2] * speed; }
                 if (keys['a'] || keys['arrowleft']) { player.vx -= right[0] * speed; player.vz -= right[2] * speed; }
                 if (keys['d'] || keys['arrowright']) { player.vx += right[0] * speed; player.vz += right[2] * speed; }
-                if (keys[' '] && player.y <= 2) { player.vy = 0.3; } // Jump
-                player.vx *= 0.8; // Friction
-                player.vz *= 0.8;
+                if (keys[' '] && player.y <= 2) { player.vy = 0.3; }
+                player.vx *= 0.8;
                 player.vy -= gravity;
+                player.vz *= 0.8;
                 player.x += player.vx;
                 player.y += player.vy;
                 player.z += player.vz;
-                if (player.y < 2) { player.y = 2; player.vy = 0; } // Ground collision
+                if (player.y < 2) { player.y = 2; player.vy = 0; }
 
-                // Simple AABB collisions between players
+                // Collisions
                 for (let p in players) {
                     if (p !== username) {
-                        const dx = player.x - players[p].x;
-                        const dy = player.y - players[p].y;
-                        const dz = player.z - players[p].z;
-                        if (Math.sqrt(dx*dx + dy*dy + dz*dz) < 1) { // Collision distance
-                            player.x -= dx * 0.1;
-                            player.z -= dz * 0.1;
-                            players[p].x += dx * 0.1;
-                            players[p].z += dz * 0.1;
+                        const other = players[p];
+                        const dx = player.x - other.x;
+                        const dz = player.z - other.z;
+                        const dist = Math.sqrt(dx * dx + dz * dz);
+                        if (dist < 1 && dist > 0) {
+                            player.x += (dx / dist) * 0.1;
+                            player.z += (dz / dist) * 0.1;
+                            other.x -= (dx / dist) * 0.1;
+                            other.z -= (dz / dist) * 0.1;
                         }
                     }
                 }
 
-                if (serverMode === 'fight' && keys['space']) { // Attack
+                // Attack
+                if (serverMode === 'fight' && keys['e'] && !keys['space']) {
                     for (let p in players) {
                         if (p !== username) {
                             const dx = player.x - players[p].x;
-                            const dy = player.y - players[p].y;
                             const dz = player.z - players[p].z;
-                            if (Math.sqrt(dx*dx + dy*dy + dz*dz) < 2) {
-                                players[p].health -= 10 + (weapons[equippedWeapon] || 0);
+                            const dist = Math.sqrt(dx * dx + dz * dz);
+                            if (dist < 2) {
+                                players[p].health -= weapons[equippedWeapon].damage;
                                 if (players[p].health <= 0) {
-                                    players[p].x = Math.random() * 20 - 10;
-                                    players[p].z = Math.random() * 20 - 10;
+                                    players[p].x = Math.random() * 10 - 5;
+                                    players[p].z = Math.random() * 10 - 5;
                                     players[p].health = 100;
                                     player.wins++;
                                     accounts[username].wins = player.wins;
@@ -934,6 +1065,7 @@
             }
 
             function gameRender() {
+                if (!gl) return;
                 gl.clearColor(map === 'Arena' ? 0.5 : map === 'Rooftop' ? 0.7 : 0.2, map === 'Rooftop' ? 0.8 : 0.5, map === 'Space Station' ? 0.2 : 1.0, 1.0);
                 gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
                 gl.enable(gl.DEPTH_TEST);
@@ -949,7 +1081,7 @@
                 ]);
 
                 const player = players[username];
-                const cameraOffset = firstPerson ? [0, 0, 0] : [0, 2, -5];
+                const cameraOffset = firstPerson ? [0, 1.4, 0] : [0, 2, -5];
                 const cosP = Math.cos(pitch), sinP = Math.sin(pitch);
                 const cosY = Math.cos(yaw), sinY = Math.sin(yaw);
                 const modelView = new Float32Array([
@@ -964,76 +1096,87 @@
                 gl.uniformMatrix4fv(projectionMatrixLoc, false, proj);
                 gl.uniformMatrix4fv(modelViewMatrixLoc, false, modelView);
 
-                // Baseplate
-                const baseplateBuffer = gl.createBuffer();
+                // Render Baseplate
                 gl.bindBuffer(gl.ARRAY_BUFFER, baseplateBuffer);
-                gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(baseplatePositions), gl.STATIC_DRAW);
+                gl.bufferData(gl.ARRAY_BUFFER, baseplatePositions, gl.STATIC_DRAW);
                 gl.vertexAttribPointer(positionLocation, 3, gl.FLOAT, false, 0, 0);
                 gl.enableVertexAttribArray(positionLocation);
-                const baseplateNormalBuffer = gl.createBuffer();
                 gl.bindBuffer(gl.ARRAY_BUFFER, baseplateNormalBuffer);
-                gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(baseplateNormals), gl.STATIC_DRAW);
+                gl.bufferData(gl.ARRAY_BUFFER, baseplateNormals, gl.STATIC_DRAW);
                 gl.vertexAttribPointer(normalLocation, 3, gl.FLOAT, false, 0, 0);
                 gl.enableVertexAttribArray(normalLocation);
-                const baseplateColorBuffer = gl.createBuffer();
                 gl.bindBuffer(gl.ARRAY_BUFFER, baseplateColorBuffer);
-                gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(baseplateColors), gl.STATIC_DRAW);
+                gl.bufferData(gl.ARRAY_BUFFER, baseplateColors, gl.STATIC_DRAW);
                 gl.vertexAttribPointer(colorLocation, 4, gl.FLOAT, false, 0, 0);
                 gl.enableVertexAttribArray(colorLocation);
                 gl.drawArrays(gl.TRIANGLES, 0, baseplatePositions.length / 3);
 
-                // Players (simple cubes for body, spheres for heads – approximated with cubes)
+                // Render Players
                 for (let p in players) {
                     const player = players[p];
-                    const color = player.color;
-                    const positions = [
-                        // Head
-                        player.x - 0.3, player.y + 1.2, player.z - 0.3, player.x + 0.3, player.y + 1.2, player.z - 0.3, player.x + 0.3, player.y + 1.5, player.z - 0.3, player.x - 0.3, player.y + 1.5, player.z - 0.3,
-                        // Body
-                        player.x - 0.4, player.y + 0.5, player.z - 0.4, player.x + 0.4, player.y + 0.5, player.z - 0.4, player.x + 0.4, player.y + 1.0, player.z - 0.4, player.x - 0.4, player.y + 1.0, player.z - 0.4,
-                        // Arms and legs (simplified)
-                        player.x - 0.6, player.y + 0.5, player.z - 0.1, player.x - 0.4, player.y + 0.5, player.z - 0.1, player.x - 0.4, player.y + 1.0, player.z - 0.1, player.x - 0.6, player.y + 1.0, player.z - 0.1,
-                        player.x + 0.4, player.y + 0.5, player.z - 0.1, player.x + 0.6, player.y + 0.5, player.z - 0.1, player.x + 0.6, player.y + 1.0, player.z - 0.1, player.x + 0.4, player.y + 1.0, player.z - 0.1,
-                        player.x - 0.2, player.y, player.z - 0.6, player.x - 0.2, player.y + 0.5, player.z - 0.6, player.x + 0.2, player.y + 0.5, player.z - 0.6, player.x + 0.2, player.y, player.z - 0.6,
-                        player.x - 0.2, player.y, player.z + 0.6, player.x - 0.2, player.y + 0.5, player.z + 0.6, player.x + 0.2, player.y + 0.5, player.z + 0.6, player.x + 0.2, player.y, player.z + 0.6
-                    ];
-                    const normals = Array(positions.length / 3).fill(0).flatMap(() => [0, 0, 1]); // Simplified
-                    const colors = Array(positions.length).fill(0).flatMap(() => color);
+                    const positions = getPlayerModel(player.skin);
+                    const normals = new Float32Array(Array(positions.length / 3).fill(0).flatMap(() => [0, 0, 1]));
+                    const colors = new Float32Array(Array(positions.length / 3).fill(0).flatMap(() => player.color));
                     const positionBuffer = gl.createBuffer();
                     gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-                    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
+                    gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW);
                     gl.vertexAttribPointer(positionLocation, 3, gl.FLOAT, false, 0, 0);
                     gl.enableVertexAttribArray(positionLocation);
-                    const normalBuffer = gl.createBuffer();
-                    gl.bindBuffer(gl.ARRAY_BUFFER, normalBuffer);
-                    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(normals), gl.STATIC_DRAW);
+                    gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+                    gl.bufferData(gl.ARRAY_BUFFER, normals, gl.STATIC_DRAW);
                     gl.vertexAttribPointer(normalLocation, 3, gl.FLOAT, false, 0, 0);
                     gl.enableVertexAttribArray(normalLocation);
-                    const colorBuffer = gl.createBuffer();
-                    gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
-                    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
+                    gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+                    gl.bufferData(gl.ARRAY_BUFFER, colors, gl.STATIC_DRAW);
                     gl.vertexAttribPointer(colorLocation, 4, gl.FLOAT, false, 0, 0);
                     gl.enableVertexAttribArray(colorLocation);
+                    const playerMatrix = new Float32Array([
+                        1, 0, 0, 0,
+                        0, 1, 0, 0,
+                        0, 0, 1, 0,
+                        player.x, player.y, player.z, 1
+                    ]);
+                    gl.uniformMatrix4fv(modelViewMatrixLoc, false, playerMatrix);
                     gl.drawArrays(gl.TRIANGLES, 0, positions.length / 3);
 
-                    // Username text (2D overlay)
+                    // Username Billboard
+                    ctx.save();
+                    ctx.translate(canvas.width / 2, canvas.height / 2);
+                    const screenPos = toScreenPosition(player.x, player.y + 2, player.z, proj, modelView);
                     ctx.fillStyle = 'white';
                     ctx.font = '16px Arial';
-                    ctx.fillText(player.username, player.x * 100 - canvas.width / 2, (player.y + 2) * 100 - canvas.height / 2);
+                    ctx.textAlign = 'center';
+                    ctx.fillText(player.username, screenPos.x, screenPos.y);
+                    ctx.restore();
                 }
 
-                // UI for currency
-                if (currencyDisplay === 'top-left') {
-                    ctx.fillStyle = 'yellow';
-                    ctx.font = '20px Arial';
-                    ctx.fillText(`Conecon: ${conecon}`, 10, 30);
-                } else {
-                    ctx.fillStyle = 'yellow';
-                    ctx.font = '20px Arial';
-                    ctx.fillText(`Conecon: ${conecon}`, canvas.width - 150, 30);
-                }
+                // UI for Currency (in-game)
+                ctx.fillStyle = 'yellow';
+                ctx.font = '20px Arial';
+                ctx.textAlign = currencyDisplay === 'top-left' ? 'left' : 'right';
+                ctx.fillText(`Conecon: ${conecon}`, currencyDisplay === 'top-left' ? 10 : canvas.width - 10, 30);
 
                 requestAnimationFrame(gameRender);
+            }
+
+            function toScreenPosition(x, y, z, proj, mv) {
+                const vec = [x, y, z, 1];
+                const mvVec = [0, 0, 0, 0];
+                for (let i = 0; i < 4; i++) {
+                    for (let j = 0; j < 4; j++) {
+                        mvVec[i] += mv[i * 4 + j] * vec[j];
+                    }
+                }
+                const projVec = [0, 0, 0, 0];
+                for (let i = 0; i < 4; i++) {
+                    for (let j = 0; j < 4; j++) {
+                        projVec[i] += proj[i * 4 + j] * mvVec[j];
+                    }
+                }
+                return {
+                    x: (projVec[0] / projVec[3] + 1) * canvas.width / 2,
+                    y: (1 - projVec[1] / projVec[3]) * canvas.height / 2
+                };
             }
 
             gameUpdate();
@@ -1042,8 +1185,11 @@
 
         // Init
         document.getElementById('defaultPOV').value = defaultPOV;
+        document.getElementById('mouseSensitivity').value = mouseSensitivity;
+        document.getElementById('currencyDisplay').value = currencyDisplay;
         updateFriends();
         updateChat();
+        updateConeconDisplay();
         if (!accounts['Conehead8654']) {
             accounts['Conehead8654'] = { password: 'Di@d09202015', friends: [], requestsSent: [], wins: 0, conecon: 0, equippedSkin: 'default-boy', equippedWeapon: 'fist' };
             localStorage.setItem('coneWorksAccounts', JSON.stringify(accounts));

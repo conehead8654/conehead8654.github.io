@@ -115,6 +115,9 @@
             color: white !important;
             border: 2px solid white !important;
             z-index: 10001 !important;
+            position: fixed !important;
+            top: 10px !important;
+            right: 10px !important;
         }
         #publicChat {
             position: absolute;
@@ -523,7 +526,7 @@
     <script>
         try {
             console.log('Script loaded successfully');
-            let version = 3.5.3;
+            let version = 3.53;
             let username = null;
             let sessionId = Date.now() + '-' + Math.random().toString(36).slice(2, 8);
             let accounts = JSON.parse(localStorage.getItem(`coneWorksAccounts_${sessionId}`)) || {};
@@ -553,28 +556,33 @@
             const ctx = canvas.getContext('2d');
             let ui = document.getElementById('ui');
             const coneconDisplay = document.getElementById('coneconDisplay');
+            let players = JSON.parse(localStorage.getItem(`coneWorksPlayers_${sessionId}`)) || {};
 
-            // Custom encoding for save ID
             function customEncode(str) {
-                const b64 = btoa(unescape(encodeURIComponent(str)));
-                const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
-                let result = 'cw_';
-                for (let i = 0; i < Math.min(b64.length, 6); i++) {
-                    result += chars[(b64.charCodeAt(i) % chars.length)];
+                try {
+                    const b64 = btoa(unescape(encodeURIComponent(str)));
+                    const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+                    let result = 'cw_';
+                    for (let i = 0; i < Math.min(b64.length, 6); i++) {
+                        result += chars[(b64.charCodeAt(i) % chars.length)];
+                    }
+                    return result;
+                } catch (e) {
+                    console.error('Custom encode error:', e);
+                    return 'cw_error';
                 }
-                return result;
             }
 
             function saveCredentials() {
                 try {
-                    const user = username;
-                    const pass = accounts[username].password;
+                    const user = document.getElementById('username').value.trim();
+                    const pass = document.getElementById('password').value;
                     if (user && pass) {
                         const state = { username: user, password: pass };
                         const stateJson = JSON.stringify(state);
                         const saveId = customEncode(stateJson);
                         navigator.clipboard.writeText(saveId).then(() => {
-                            alert(`Save this ID to recover your account on a new device: ${saveId}`);
+                            alert(`Save this ID to recover your username/password on a new device: ${saveId}`);
                             console.log('Credentials saved:', saveId, 'Session:', sessionId);
                         }).catch(e => {
                             alert(`Failed to copy Save ID: ${saveId}. Copy it manually!`);
@@ -587,64 +595,17 @@
                 }
             }
 
-            function clearCache() {
-                try {
-                    if (username.toLowerCase() !== 'conehead8654') {
-                        alert('Only conehead8654 can clear cache!');
-                        return;
-                    }
-                    localStorage.removeItem(`coneWorksServers_${sessionId}`);
-                    localStorage.removeItem(`coneWorksReports_${sessionId}`);
-                    localStorage.removeItem(`coneWorksMessages_${sessionId}`);
-                    localStorage.removeItem(`coneWorksBannedPlayers_${sessionId}`);
-                    localStorage.removeItem(`coneWorksPlayers_${sessionId}`);
-                    servers = [];
-                    reports = [];
-                    publicMessages = [];
-                    bannedPlayers = [];
-                    players = {};
-                    alert('Multiplayer cache cleared!');
-                    console.log('Cache cleared for session:', sessionId);
-                    updateServerList();
-                    updatePublicChat();
-                } catch (e) {
-                    console.error('Clear cache error:', e);
-                    alert('Error clearing cache. Check console.');
-                }
-            }
-
-            function resetData() {
-                try {
-                    localStorage.removeItem(`coneWorksAccounts_${sessionId}`);
-                    localStorage.removeItem(`coneWorksServers_${sessionId}`);
-                    localStorage.removeItem(`coneWorksReports_${sessionId}`);
-                    localStorage.removeItem(`coneWorksBannedPlayers_${sessionId}`);
-                    localStorage.removeItem(`coneWorksPlayers_${sessionId}`);
-                    accounts = {};
-                    accounts['conehead8654'] = { password: 'Di@d09202015', friends: [], requestsSent: [], wins: 0, conecon: 100, equippedSkin: 'default-boy', equippedWeapon: 'fist' };
-                    servers = [];
-                    reports = [];
-                    bannedPlayers = [];
-                    players = {};
-                    localStorage.setItem(`coneWorksAccounts_${sessionId}`, JSON.stringify(accounts));
-                    localStorage.setItem(`coneWorksServers_${sessionId}`, JSON.stringify(servers));
-                    localStorage.setItem(`coneWorksReports_${sessionId}`, JSON.stringify(reports));
-                    localStorage.setItem(`coneWorksBannedPlayers_${sessionId}`, JSON.stringify(bannedPlayers));
-                    localStorage.setItem(`coneWorksPlayers_${sessionId}`, JSON.stringify(players));
-                    alert('Data reset! Try logging in with conehead8654.');
-                    console.log('Data reset for session:', sessionId);
-                } catch (e) {
-                    console.error('Reset data error:', e);
-                    alert('Error resetting data. Check console.');
-                }
-            }
-
             function login() {
                 try {
                     const user = document.getElementById('username').value.trim();
                     const pass = document.getElementById('password').value;
                     const userLower = user.toLowerCase();
                     let matchedUser = Object.keys(accounts).find(u => u.toLowerCase() === userLower);
+                    if (!user || !pass) {
+                        alert('Please enter both username and password!');
+                        console.log('Login failed: Empty username or password');
+                        return;
+                    }
                     if (matchedUser && accounts[matchedUser].password === pass) {
                         username = matchedUser;
                         conecon = accounts[matchedUser].conecon || 0;
@@ -653,17 +614,19 @@
                         friends = accounts[matchedUser].friends || [];
                         friendRequestsSent = accounts[matchedUser].requestsSent || [];
                         friendRequestsReceived = JSON.parse(localStorage.getItem(`coneWorksRequestsReceived_${sessionId}`))?.[matchedUser] || [];
+                        pov = accounts[matchedUser].pov || 'third';
                         document.getElementById('loginPage').style.display = 'none';
                         document.getElementById('homePage').style.display = 'block';
                         document.getElementById('fullscreenBtn').style.display = 'block';
                         document.getElementById('reviewReportsBtn').style.display = username.toLowerCase() === 'conehead8654' ? 'block' : 'none';
-                        document.getElementById('clearCacheBtn').style.display = username.toLowerCase() === 'block' : 'none';
+                        document.getElementById('clearCacheBtn').style.display = username.toLowerCase() === 'conehead8654' ? 'block' : 'none';
                         updateConeconDisplay();
                         updateFriendList();
                         saveCredentials();
                         console.log('Login successful:', matchedUser, 'Session:', sessionId);
                     } else {
                         alert('Invalid username or password!');
+                        console.log('Login failed: Invalid credentials for', user);
                     }
                 } catch (e) {
                     console.error('Login error:', e);
@@ -676,30 +639,78 @@
                     const user = document.getElementById('username').value.trim();
                     const pass = document.getElementById('password').value;
                     const userLower = user.toLowerCase();
-                    if (user && pass && !Object.keys(accounts).some(u => u.toLowerCase() === userLower) && userLower !== 'conehead8654') {
-                        accounts[user] = { password: pass, friends: [], requestsSent: [], wins: 0, conecon: 0, equippedSkin: 'default-boy', equippedWeapon: 'fist' };
-                        localStorage.setItem(`coneWorksAccounts_${sessionId}`, JSON.stringify(accounts));
-                        username = user;
-                        conecon = 0;
-                        equippedSkin = 'default-boy';
-                        equippedWeapon = 'fist';
-                        friends = [];
-                        friendRequestsSent = [];
-                        friendRequestsReceived = [];
-                        document.getElementById('loginPage').style.display = 'none';
-                        document.getElementById('homePage').style.display = 'block';
-                        document.getElementById('fullscreenBtn').style.display = 'block';
-                        document.getElementById('reviewReportsBtn').style.display = 'none';
-                        document.getElementById('clearCacheBtn').style.display = 'none';
-                        updateConeconDisplay();
-                        saveCredentials();
-                        console.log('Signup successful:', user, 'Session:', sessionId);
-                    } else {
-                        alert(Object.keys(accounts).some(u => u.toLowerCase() === userLower) ? 'Username taken!' : 'Invalid username/password or reserved name!');
+                    if (!user || !pass) {
+                        alert('Please enter both username and password!');
+                        console.log('Signup failed: Empty username or password');
+                        return;
                     }
+                    if (Object.keys(accounts).some(u => u.toLowerCase() === userLower) || userLower === 'conehead8654') {
+                        alert(userLower === 'conehead8654' ? 'Reserved username!' : 'Username already taken!');
+                        console.log('Signup failed: Username taken or reserved:', user);
+                        return;
+                    }
+                    accounts[user] = {
+                        password: pass,
+                        friends: [],
+                        requestsSent: [],
+                        requestsReceived: [],
+                        wins: 0,
+                        conecon: 0,
+                        equippedSkin: 'default-boy',
+                        equippedWeapon: 'fist',
+                        pov: 'third'
+                    };
+                    localStorage.setItem(`coneWorksAccounts_${sessionId}`, JSON.stringify(accounts));
+                    username = user;
+                    conecon = 0;
+                    equippedSkin = 'default-boy';
+                    equippedWeapon = 'fist';
+                    friends = [];
+                    friendRequestsSent = [];
+                    friendRequestsReceived = [];
+                    document.getElementById('loginPage').style.display = 'none';
+                    document.getElementById('homePage').style.display = 'block';
+                    document.getElementById('fullscreenBtn').style.display = 'block';
+                    document.getElementById('reviewReportsBtn').style.display = 'none';
+                    document.getElementById('clearCacheBtn').style.display = 'none';
+                    updateConeconDisplay();
+                    saveCredentials();
+                    console.log('Signup successful:', user, 'Session:', sessionId);
                 } catch (e) {
                     console.error('Signup error:', e);
                     alert('Error signing up. Check console.');
+                }
+            }
+
+            function clearCache() {
+                try {
+                    if (username?.toLowerCase() !== 'conehead8654') {
+                        alert('Only conehead8654 can clear cache!');
+                        console.log('Clear cache failed: Unauthorized user', username);
+                        return;
+                    }
+                    localStorage.removeItem(`coneWorksServers_${sessionId}`);
+                    localStorage.removeItem(`coneWorksReports_${sessionId}`);
+                    localStorage.removeItem(`coneWorksMessages_${sessionId}`);
+                    localStorage.removeItem(`coneWorksBannedPlayers_${sessionId}`);
+                    localStorage.removeItem(`coneWorksPlayers_${sessionId}`);
+                    servers = [];
+                    reports = [];
+                    publicMessages = [];
+                    bannedPlayers = [];
+                    players = {};
+                    localStorage.setItem(`coneWorksServers_${sessionId}`, JSON.stringify(servers));
+                    localStorage.setItem(`coneWorksReports_${sessionId}`, JSON.stringify(reports));
+                    localStorage.setItem(`coneWorksMessages_${sessionId}`, JSON.stringify(messages));
+                    localStorage.setItem(`coneWorksBannedPlayers_${sessionId}`, JSON.stringify(bannedPlayers));
+                    localStorage.setItem(`coneWorksPlayers_${sessionId}`, JSON.stringify(players));
+                    alert('Multiplayer cache cleared!');
+                    console.log('Cache cleared for session:', sessionId);
+                    updateServerList();
+                    updatePublicChat();
+                } catch (e) {
+                    console.error('Clear cache error:', e);
+                    alert('Error clearing cache. Check console.');
                 }
             }
 
@@ -707,69 +718,286 @@
                 try {
                     const controlsBox = document.getElementById('controlsBox');
                     controlsBox.style.display = controlsBox.style.display === 'none' ? 'block' : 'none';
-                    console.log('Toggled controls:', controlsBox.style.display);
+                    console.log('Toggled controls display:', controlsBox.style.display);
                 } catch (e) {
                     console.error('Toggle controls error:', e);
-                    alert('Error showing controls. Check console.');
+                    alert('Error toggling controls. Check console.');
+                }
+            }
+
+            function resetData() {
+                try {
+                    localStorage.removeItem(`coneWorksAccounts_${sessionId}`);
+                    localStorage.removeItem(`coneWorksServers_${sessionId}`);
+                    localStorage.removeItem(`coneWorksReports_${sessionId}`);
+                    localStorage.removeItem(`coneWorksMessages_${sessionId}`);
+                    localStorage.removeItem(`coneWorksBannedPlayers_${sessionId}`);
+                    localStorage.removeItem(`coneWorksPlayers_${sessionId}`);
+                    localStorage.removeItem(`coneWorksRequestsReceived_${sessionId}`);
+                    accounts = {};
+                    accounts['conehead8654'] = {
+                        password: 'Di@d09202015',
+                        friends: [],
+                        requestsSent: [],
+                        requestsReceived: [],
+                        wins: 0,
+                        conecon: 100,
+                        equippedSkin: 'default-boy',
+                        equippedWeapon: 'fist',
+                        pov: 'third'
+                    };
+                    servers = [];
+                    reports = [];
+                    bannedPlayers = [];
+                    players = {};
+                    messages = [];
+                    publicMessages = [];
+                    friendRequestsReceived = [];
+                    localStorage.setItem(`coneWorksAccounts_${sessionId}`, JSON.stringify(accounts));
+                    localStorage.setItem(`coneWorksServers_${sessionId}`, JSON.stringify(servers));
+                    localStorage.setItem(`coneWorksReports_${sessionId}`, JSON.stringify(reports));
+                    localStorage.setItem(`coneWorksMessages_${sessionId}`, JSON.stringify(messages));
+                    localStorage.setItem(`coneWorksBannedPlayers_${sessionId}`, JSON.stringify(bannedPlayers));
+                    localStorage.setItem(`coneWorksPlayers_${sessionId}`, JSON.stringify(players));
+                    localStorage.setItem(`coneWorksRequestsReceived_${sessionId}`, JSON.stringify({}));
+                    alert('Data reset! Try logging in with conehead8654.');
+                    console.log('Data reset for session:', sessionId);
+                } catch (e) {
+                    console.error('Reset data error:', e);
+                    alert('Error resetting data. Check console.');
                 }
             }
 
             function updateConeconDisplay() {
-                coneconDisplay.textContent = `Conecons: ${conecon}`;
+                try {
+                    coneconDisplay.textContent = `Conecons: ${conecon}`;
+                    console.log('Updated conecon display:', conecon);
+                } catch (e) {
+                    console.error('Update conecon display error:', e);
+                    alert('Error updating conecon display. Check console.');
+                }
             }
 
             function showHome() {
-                document.getElementById('homePage').style.display = 'block';
-                document.getElementById('serverPage').style.display = 'none';
-                document.getElementById('createServerPage').style.display = 'none';
-                document.getElementById('settingsPage').style.display = 'none';
-                document.getElementById('fullscreenBtn').style.display = 'block';
-                document.getElementById('backBtn').style.display = 'none';
-                document.getElementById('homeBtn').style.display = 'none';
-                document.getElementById('publicChat').style.display = 'none';
-                canvas.style.display = 'none';
-                ui.style.display = 'none';
-                document.getElementById('reviewReportsBtn').style.display = username && username.toLowerCase() === 'conehead8654' ? 'block' : 'none';
-                document.getElementById('clearCacheBtn').style.display = username && username.toLowerCase() === 'conehead8654' ? 'block' : 'none';
-                updateFriendList();
-                console.log('Returned to home page');
+                try {
+                    document.getElementById('homePage').style.display = 'block';
+                    document.getElementById('serverPage').style.display = 'none';
+                    document.getElementById('createServerPage').style.display = 'none';
+                    document.getElementById('settingsPage').style.display = 'none';
+                    document.getElementById('deleteAccountBox').style.display = 'none';
+                    document.getElementById('fullscreenBtn').style.display = 'block';
+                    document.getElementById('backBtn').style.display = 'none';
+                    document.getElementById('homeBtn').style.display = 'none';
+                    document.getElementById('publicChat').style.display = 'none';
+                    canvas.style.display = 'none';
+                    ui.style.display = 'none';
+                    document.getElementById('reviewReportsBtn').style.display = username && username.toLowerCase() === 'conehead8654' ? 'block' : 'none';
+                    document.getElementById('clearCacheBtn').style.display = username && username.toLowerCase() === 'conehead8654' ? 'block' : 'none';
+                    updateFriendList();
+                    console.log('Returned to home page');
+                } catch (e) {
+                    console.error('Show home error:', e);
+                    alert('Error returning to home page. Check console.');
+                }
             }
 
             function loadServerPage() {
-                document.getElementById('homePage').style.display = 'none';
-                document.getElementById('serverPage').style.display = 'block';
-                document.getElementById('fullscreenBtn').style.display = 'block';
-                updateServerList();
-                console.log('Loaded server page');
+                try {
+                    document.getElementById('homePage').style.display = 'none';
+                    document.getElementById('serverPage').style.display = 'block';
+                    document.getElementById('fullscreenBtn').style.display = 'block';
+                    updateServerList();
+                    console.log('Loaded server page');
+                } catch (e) {
+                    console.error('Load server page error:', e);
+                    alert('Error loading server page. Check console.');
+                }
             }
 
             function loadCreateServerPage() {
-                document.getElementById('homePage').style.display = 'none';
-                document.getElementById('createServerPage').style.display = 'block';
-                document.getElementById('fullscreenBtn').style.display = 'block';
-                console.log('Loaded create server page');
+                try {
+                    document.getElementById('homePage').style.display = 'none';
+                    document.getElementById('createServerPage').style.display = 'block';
+                    document.getElementById('fullscreenBtn').style.display = 'block';
+                    console.log('Loaded create server page');
+                } catch (e) {
+                    console.error('Load create server page error:', e);
+                    alert('Error loading create server page. Check console.');
+                }
             }
 
             function loadSettingsPage() {
-                document.getElementById('homePage').style.display = 'none';
-                document.getElementById('settingsPage').style.display = 'block';
-                document.getElementById('fullscreenBtn').style.display = 'block';
-                console.log('Loaded settings page');
+                try {
+                    document.getElementById('homePage').style.display = 'none';
+                    document.getElementById('settingsPage').style.display = 'block';
+                    document.getElementById('fullscreenBtn').style.display = 'block';
+                    document.getElementById('defaultPOV').value = accounts[username]?.pov || 'third';
+                    document.getElementById('mouseSensitivity').value = accounts[username]?.mouseSensitivity || 0.002;
+                    document.getElementById('currencyDisplay').value = accounts[username]?.currencyDisplay || 'top-left';
+                    console.log('Loaded settings page');
+                } catch (e) {
+                    console.error('Load settings page error:', e);
+                    alert('Error loading settings page. Check console.');
+                }
+            }
+
+            function saveSettings() {
+                try {
+                    accounts[username].pov = document.getElementById('defaultPOV').value;
+                    accounts[username].mouseSensitivity = parseFloat(document.getElementById('mouseSensitivity').value);
+                    accounts[username].currencyDisplay = document.getElementById('currencyDisplay').value;
+                    localStorage.setItem(`coneWorksAccounts_${sessionId}`, JSON.stringify(accounts));
+                    pov = accounts[username].pov;
+                    coneconDisplay.style.left = accounts[username].currencyDisplay === 'top-left' ? '10px' : '';
+                    coneconDisplay.style.right = accounts[username].currencyDisplay === 'top-right' ? '10px' : '';
+                    alert('Settings saved!');
+                    console.log('Settings saved for', username);
+                } catch (e) {
+                    console.error('Save settings error:', e);
+                    alert('Error saving settings. Check console.');
+                }
+            }
+
+            function backupData() {
+                try {
+                    const data = {
+                        accounts,
+                        servers,
+                        reports,
+                        bannedPlayers,
+                        players,
+                        messages
+                    };
+                    const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `coneWorksBackup_${sessionId}.json`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                    console.log('Backup created for session:', sessionId);
+                } catch (e) {
+                    console.error('Backup data error:', e);
+                    alert('Error creating backup. Check console.');
+                }
+            }
+
+            function restoreData() {
+                try {
+                    document.getElementById('restoreInput').click();
+                    console.log('Triggered restore input');
+                } catch (e) {
+                    console.error('Restore data trigger error:', e);
+                    alert('Error triggering restore. Check console.');
+                }
+            }
+
+            function handleRestore(event) {
+                try {
+                    const file = event.target.files[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        try {
+                            const data = JSON.parse(e.target.result);
+                            accounts = data.accounts || {};
+                            servers = data.servers || [];
+                            reports = data.reports || [];
+                            bannedPlayers = data.bannedPlayers || [];
+                            players = data.players || {};
+                            messages = data.messages || [];
+                            localStorage.setItem(`coneWorksAccounts_${sessionId}`, JSON.stringify(accounts));
+                            localStorage.setItem(`coneWorksServers_${sessionId}`, JSON.stringify(servers));
+                            localStorage.setItem(`coneWorksReports_${sessionId}`, JSON.stringify(reports));
+                            localStorage.setItem(`coneWorksBannedPlayers_${sessionId}`, JSON.stringify(bannedPlayers));
+                            localStorage.setItem(`coneWorksPlayers_${sessionId}`, JSON.stringify(players));
+                            localStorage.setItem(`coneWorksMessages_${sessionId}`, JSON.stringify(messages));
+                            alert('Data restored!');
+                            console.log('Data restored for session:', sessionId);
+                            if (username) {
+                                conecon = accounts[username]?.conecon || 0;
+                                equippedSkin = accounts[username]?.equippedSkin || 'default-boy';
+                                equippedWeapon = accounts[username]?.equippedWeapon || 'fist';
+                                friends = accounts[username]?.friends || [];
+                                friendRequestsSent = accounts[username]?.requestsSent || [];
+                                friendRequestsReceived = JSON.parse(localStorage.getItem(`coneWorksRequestsReceived_${sessionId}`))?.[username] || [];
+                                pov = accounts[username]?.pov || 'third';
+                                updateConeconDisplay();
+                                updateFriendList();
+                            }
+                        } catch (e) {
+                            console.error('Restore parse error:', e);
+                            alert('Error parsing backup file. Check console.');
+                        }
+                    };
+                    reader.readAsText(file);
+                } catch (e) {
+                    console.error('Handle restore error:', e);
+                    alert('Error restoring data. Check console.');
+                }
+            }
+
+            function showDeleteAccount() {
+                try {
+                    document.getElementById('settingsPage').style.display = 'none';
+                    document.getElementById('deleteAccountBox').style.display = 'block';
+                    console.log('Showing delete account box');
+                } catch (e) {
+                    console.error('Show delete account error:', e);
+                    alert('Error showing delete account box. Check console.');
+                }
+            }
+
+            function deleteAccount() {
+                try {
+                    const user = document.getElementById('deleteUsername').value.trim();
+                    const pass = document.getElementById('deletePassword').value;
+                    const userLower = user.toLowerCase();
+                    let matchedUser = Object.keys(accounts).find(u => u.toLowerCase() === userLower);
+                    if (matchedUser && accounts[matchedUser].password === pass && matchedUser === username) {
+                        delete accounts[matchedUser];
+                        localStorage.setItem(`coneWorksAccounts_${sessionId}`, JSON.stringify(accounts));
+                        username = null;
+                        conecon = 0;
+                        equippedSkin = 'default-boy';
+                        equippedWeapon = 'fist';
+                        friends = [];
+                        friendRequestsSent = [];
+                        friendRequestsReceived = [];
+                        document.getElementById('deleteAccountBox').style.display = 'none';
+                        document.getElementById('homePage').style.display = 'none';
+                        document.getElementById('loginPage').style.display = 'block';
+                        document.getElementById('fullscreenBtn').style.display = 'block';
+                        alert('Account deleted!');
+                        console.log('Account deleted:', matchedUser);
+                    } else {
+                        alert('Invalid username or password, or not your account!');
+                        console.log('Delete account failed: Invalid credentials or wrong user', user);
+                    }
+                } catch (e) {
+                    console.error('Delete account error:', e);
+                    alert('Error deleting account. Check console.');
+                }
             }
 
             function createServer() {
                 try {
                     const name = document.getElementById('newServerName').value.trim();
                     const mode = document.getElementById('newServerMode').value;
-                    if (name && !servers.find(s => s.name === name)) {
-                        servers.push({ name, mode, players: [username], owner: username });
-                        localStorage.setItem(`coneWorksServers_${sessionId}`, JSON.stringify(servers));
-                        joinServer(name);
-                        console.log('Server created:', name, mode, 'Session:', sessionId);
-                    } else {
-                        alert('Server name taken or invalid!');
-                        console.log('Failed to create server:', name);
+                    if (!name) {
+                        alert('Please enter a server name!');
+                        console.log('Create server failed: Empty name');
+                        return;
                     }
+                    if (servers.find(s => s.name === name)) {
+                        alert('Server name already taken!');
+                        console.log('Create server failed: Name taken', name);
+                        return;
+                    }
+                    servers.push({ name, mode, players: [username], owner: username });
+                    localStorage.setItem(`coneWorksServers_${sessionId}`, JSON.stringify(servers));
+                    joinServer(name);
+                    console.log('Server created:', name, mode, 'Session:', sessionId);
                 } catch (e) {
                     console.error('Create server error:', e);
                     alert('Error creating server. Check console.');
@@ -831,9 +1059,12 @@
                     }
                     if (currentServer) {
                         if (!currentServer.players) currentServer.players = [];
-                        currentServer.players.push(username);
+                        if (!currentServer.players.includes(username)) {
+                            currentServer.players.push(username);
+                        }
                         localStorage.setItem(`coneWorksServers_${sessionId}`, JSON.stringify(servers));
                         document.getElementById('serverPage').style.display = 'none';
+                        document.getElementById('createServerPage').style.display = 'none';
                         canvas.style.display = 'block';
                         document.getElementById('fullscreenBtn').style.display = 'block';
                         document.getElementById('backBtn').style.display = 'block';
@@ -875,50 +1106,585 @@
                 }
             }
 
+            function startGame() {
+                try {
+                    console.log('Starting game');
+                    let player = {
+                        x: 400,
+                        y: 300,
+                        z: 0,
+                        speed: 5,
+                        jumping: false,
+                        jumpHeight: 50,
+                        jumpProgress: 0,
+                        walkProgress: 0,
+                        direction: 0,
+                        username: username,
+                        equippedSkin: equippedSkin,
+                        equippedWeapon: equippedWeapon
+                    };
+                    players[username] = player;
+                    localStorage.setItem(`coneWorksPlayers_${sessionId}`, JSON.stringify(players));
+                    canvas.style.display = 'block';
+                    ui.style.display = 'block';
+                    ui.innerHTML = `
+                        <button onclick="openSkinShop()">Skin Shop</button>
+                        <button onclick="openWeaponShop()">Weapon Shop</button>
+                        <button onclick="togglePlayerList()">Player List</button>
+                        <button onclick="togglePOV()">Toggle POV</button>
+                        <button onclick="reportPlayerUI()">Report Player</button>
+                    `;
+                    console.log('UI buttons rendered:', ui.innerHTML);
+                    let keys = {};
+
+                    document.addEventListener('keydown', (e) => {
+                        keys[e.key] = true;
+                        if (e.key === ' ' && !player.jumping) {
+                            player.jumping = true;
+                            player.jumpProgress = 0;
+                            console.log('Jump started:', username);
+                        }
+                        if (e.key === 'c') {
+                            togglePublicChat();
+                        }
+                        if (e.key === 'e' && currentServer.mode === 'fight') {
+                            console.log('Attack initiated:', username);
+                        }
+                    });
+
+                    document.addEventListener('keyup', (e) => {
+                        keys[e.key] = false;
+                    });
+
+                    function updateGame() {
+                        try {
+                            ctx.clearRect(0, 0, canvas.width, canvas.height);
+                            let moving = false;
+
+                            if (keys['ArrowLeft'] || keys['a']) {
+                                player.x = Math.max(0, player.x - player.speed);
+                                player.direction = -1;
+                                moving = true;
+                            }
+                            if (keys['ArrowRight'] || keys['d']) {
+                                player.x = Math.min(800, player.x + player.speed);
+                                player.direction = 1;
+                                moving = true;
+                            }
+                            if (keys['ArrowUp'] || keys['w']) {
+                                player.y = Math.max(285, player.y - player.speed);
+                                moving = true;
+                            }
+                            if (keys['ArrowDown'] || keys['s']) {
+                                player.y = Math.min(450, player.y + player.speed);
+                                moving = true;
+                            }
+
+                            if (player.jumping) {
+                                player.jumpProgress += 0.05;
+                                if (player.jumpProgress < 0.5) {
+                                    player.z = player.jumpHeight * Math.sin(player.jumpProgress * Math.PI);
+                                } else if (player.jumpProgress >= 1) {
+                                    player.jumping = false;
+                                    player.z = 0;
+                                    player.jumpProgress = 0;
+                                }
+                                console.log('Jump progress:', player.jumpProgress, 'Z:', player.z);
+                            }
+
+                            if (moving) {
+                                player.walkProgress += 0.1;
+                            } else {
+                                player.walkProgress = 0;
+                            }
+
+                            players[username] = player;
+                            localStorage.setItem(`coneWorksPlayers_${sessionId}`, JSON.stringify(players));
+
+                            Object.values(players).forEach(p => drawPlayer(p));
+                            requestAnimationFrame(updateGame);
+                        } catch (e) {
+                            console.error('Update game error:', e);
+                            alert('Error updating game. Check console.');
+                        }
+                    }
+
+                    function drawPlayer(p) {
+                        try {
+                            ctx.save();
+                            ctx.translate(p.x, p.y - p.z);
+
+                            // Jump animation: 30% vertical stretch
+                            let scaleY = 1;
+                            if (p.jumping) {
+                                scaleY = p.jumpProgress < 0.5 ? 1 + p.jumpProgress * 0.3 : 1.3 - (p.jumpProgress - 0.5) * 0.3;
+                            }
+                            ctx.scale(1, scaleY);
+
+                            // Walk animation: ±28° leg rotation
+                            let legAngle = p.walkProgress ? Math.sin(p.walkProgress * Math.PI) * (28 * Math.PI / 180) : 0;
+
+                            // Draw stick figure
+                            ctx.fillStyle = skins[p.equippedSkin || 'default-boy'].color.map(c => c * 255).join(',');
+                            ctx.beginPath();
+                            ctx.arc(0, -20, 10, 0, Math.PI * 2); // Head
+                            ctx.fill();
+
+                            ctx.beginPath();
+                            ctx.moveTo(0, -10);
+                            ctx.lineTo(0, 10); // Body
+                            ctx.strokeStyle = ctx.fillStyle;
+                            ctx.lineWidth = 5;
+                            ctx.stroke();
+
+                            // Arms
+                            ctx.beginPath();
+                            ctx.moveTo(0, -5);
+                            ctx.lineTo(p.direction === 1 ? -15 : 15, 5);
+                            ctx.moveTo(0, -5);
+                            ctx.lineTo(p.direction === 1 ? 15 : -15, 5);
+                            ctx.stroke();
+
+                            // Legs with walk animation
+                            ctx.save();
+                            ctx.translate(0, 10);
+                            ctx.rotate(legAngle);
+                            ctx.beginPath();
+                            ctx.moveTo(0, 0);
+                            ctx.lineTo(-10, 20);
+                            ctx.stroke();
+                            ctx.restore();
+
+                            ctx.save();
+                            ctx.translate(0, 10);
+                            ctx.rotate(-legAngle);
+                            ctx.beginPath();
+                            ctx.moveTo(0, 0);
+                            ctx.lineTo(10, 20);
+                            ctx.stroke();
+                            ctx.restore();
+
+                            // Nametag
+                            ctx.fillStyle = 'white';
+                            ctx.font = '12px Arial';
+                            ctx.textAlign = 'center';
+                            ctx.fillText(p.username || 'Player', 0, -30);
+
+                            ctx.restore();
+                        } catch (e) {
+                            console.error('Draw player error:', e);
+                            alert('Error drawing player. Check console.');
+                        }
+                    }
+
+                    updateGame();
+                    console.log('Game started');
+                } catch (e) {
+                    console.error('Start game error:', e);
+                    alert('Error starting game. Check console.');
+                }
+            }
+
+            function openSkinShop() {
+                try {
+                    const skinList = document.getElementById('skinList');
+                    skinList.innerHTML = Object.keys(skins).map(s => `<div>${s} (${skins[s].cost} Conecons) <button onclick="buySkin('${s}')">Buy</button></div>`).join('');
+                    document.getElementById('skinBox').style.display = 'block';
+                    console.log('Opened skin shop');
+                } catch (e) {
+                    console.error('Open skin shop error:', e);
+                    alert('Error opening skin shop. Check console.');
+                }
+            }
+
+            function buySkin(skin) {
+                try {
+                    if (conecon >= skins[skin].cost) {
+                        conecon -= skins[skin].cost;
+                        equippedSkin = skin;
+                        accounts[username].conecon = conecon;
+                        accounts[username].equippedSkin = skin;
+                        localStorage.setItem(`coneWorksAccounts_${sessionId}`, JSON.stringify(accounts));
+                        updateConeconDisplay();
+                        document.getElementById('skinBox').style.display = 'none';
+                        alert(`Purchased ${skin}!`);
+                        console.log('Skin purchased:', skin, 'Conecons:', conecon);
+                    } else {
+                        alert('Not enough Conecons!');
+                        console.log('Buy skin failed: Insufficient conecons', conecon, 'needed', skins[skin].cost);
+                    }
+                } catch (e) {
+                    console.error('Buy skin error:', e);
+                    alert('Error buying skin. Check console.');
+                }
+            }
+
+            function openWeaponShop() {
+                try {
+                    const weaponList = document.getElementById('weaponList');
+                    weaponList.innerHTML = Object.keys(weapons).map(w => `<div>${w} (${weapons[w].cost} Conecons) <button onclick="buyWeapon('${w}')">Buy</button></div>`).join('');
+                    document.getElementById('shopBox').style.display = 'block';
+                    console.log('Opened weapon shop');
+                } catch (e) {
+                    console.error('Open weapon shop error:', e);
+                    alert('Error opening weapon shop. Check console.');
+                }
+            }
+
+            function buyWeapon(weapon) {
+                try {
+                    if (conecon >= weapons[weapon].cost) {
+                        conecon -= weapons[weapon].cost;
+                        equippedWeapon = weapon;
+                        accounts[username].conecon = conecon;
+                        accounts[username].equippedWeapon = weapon;
+                        localStorage.setItem(`coneWorksAccounts_${sessionId}`, JSON.stringify(accounts));
+                        updateConeconDisplay();
+                        document.getElementById('shopBox').style.display = 'none';
+                        alert(`Purchased ${weapon}!`);
+                        console.log('Weapon purchased:', weapon, 'Conecons:', conecon);
+                    } else {
+                        alert('Not enough Conecons!');
+                        console.log('Buy weapon failed: Insufficient conecons', conecon, 'needed', weapons[weapon].cost);
+                    }
+                } catch (e) {
+                    console.error('Buy weapon error:', e);
+                    alert('Error buying weapon. Check console.');
+                }
+            }
+
+            function togglePOV() {
+                try {
+                    pov = pov === 'third' ? 'first' : 'third';
+                    accounts[username].pov = pov;
+                    localStorage.setItem(`coneWorksAccounts_${sessionId}`, JSON.stringify(accounts));
+                    alert(`Switched to ${pov}-person view!`);
+                    console.log('Toggled POV:', pov);
+                } catch (e) {
+                    console.error('Toggle POV error:', e);
+                    alert('Error toggling POV. Check console.');
+                }
+            }
+
+            function reportPlayerUI() {
+                try {
+                    const reportPlayer = document.getElementById('reportPlayer');
+                    reportPlayer.innerHTML = currentServer.players.filter(p => p !== username).map(p => `<option value="${p}">${p}</option>`).join('');
+                    document.getElementById('reportBox').style.display = 'block';
+                    console.log('Opened report player UI');
+                } catch (e) {
+                    console.error('Report player UI error:', e);
+                    alert('Error opening report UI. Check console.');
+                }
+            }
+
+            function submitReport() {
+                try {
+                    const reportedPlayer = document.getElementById('reportPlayer').value;
+                    if (reportedPlayer && reportedPlayer !== username) {
+                        reports.push({ reporter: username, reported: reportedPlayer, server: currentServer.name, timestamp: Date.now() });
+                        localStorage.setItem(`coneWorksReports_${sessionId}`, JSON.stringify(reports));
+                        document.getElementById('reportBox').style.display = 'none';
+                        alert(`Reported ${reportedPlayer}!`);
+                        console.log('Report submitted:', reportedPlayer, 'by', username);
+                    } else {
+                        alert('Invalid player to report!');
+                        console.log('Report failed: Invalid player', reportedPlayer);
+                    }
+                } catch (e) {
+                    console.error('Submit report error:', e);
+                    alert('Error submitting report. Check console.');
+                }
+            }
+
+            function reviewReports() {
+                try {
+                    if (username.toLowerCase() !== 'conehead8654') {
+                        alert('Only conehead8654 can review reports!');
+                        console.log('Review reports failed: Unauthorized user', username);
+                        return;
+                    }
+                    const reportList = document.getElementById('reportList');
+                    reportList.innerHTML = reports.map((r, i) => `<div>${r.reporter} reported ${r.reported} on ${r.server} <button onclick="banPlayer('${r.reported}', ${i})">Ban</button></div>`).join('');
+                    document.getElementById('reviewReportsBox').style.display = 'block';
+                    console.log('Opened review reports');
+                } catch (e) {
+                    console.error('Review reports error:', e);
+                    alert('Error reviewing reports. Check console.');
+                }
+            }
+
+            function banPlayer(player, reportIndex) {
+                try {
+                    if (username.toLowerCase() !== 'conehead8654') {
+                        alert('Only conehead8654 can ban players!');
+                        console.log('Ban failed: Unauthorized user', username);
+                        return;
+                    }
+                    if (!bannedPlayers.includes(player)) {
+                        bannedPlayers.push(player);
+                        localStorage.setItem(`coneWorksBannedPlayers_${sessionId}`, JSON.stringify(bannedPlayers));
+                        servers.forEach(s => s.players = s.players.filter(p => p !== player));
+                        localStorage.setItem(`coneWorksServers_${sessionId}`, JSON.stringify(servers));
+                        reports.splice(reportIndex, 1);
+                        localStorage.setItem(`coneWorksReports_${sessionId}`, JSON.stringify(reports));
+                        document.getElementById('reviewReportsBox').style.display = 'none';
+                        alert(`${player} banned!`);
+                        console.log('Player banned:', player);
+                    } else {
+                        alert('Player already banned!');
+                        console.log('Ban failed: Player already banned', player);
+                    }
+                } catch (e) {
+                    console.error('Ban player error:', e);
+                    alert('Error banning player. Check console.');
+                }
+            }
+
+            function togglePlayerList() {
+                try {
+                    const playerList = document.getElementById('playerList');
+                    playerList.innerHTML = Object.keys(accounts).map(u => {
+                        return `<tr><td>${u}</td><td>${accounts[u].wins || 0}</td><td>${accounts[u].conecon || 0}</td><td><button onclick="reportPlayerUI()">Report</button></td></tr>`;
+                    }).join('');
+                    document.getElementById('playerListBox').style.display = document.getElementById('playerListBox').style.display === 'none' ? 'block' : 'none';
+                    console.log('Toggled player list');
+                } catch (e) {
+                    console.error('Toggle player list error:', e);
+                    alert('Error toggling player list. Check console.');
+                }
+            }
+
+            function togglePublicChat() {
+                try {
+                    const chat = document.getElementById('publicChat');
+                    chat.style.display = chat.style.display === 'none' ? 'block' : 'none';
+                    if (chat.style.display === 'block') updatePublicChat();
+                    console.log('Toggled public chat:', chat.style.display);
+                } catch (e) {
+                    console.error('Toggle public chat error:', e);
+                    alert('Error toggling public chat. Check console.');
+                }
+            }
+
+            function sendPublicMessage() {
+                try {
+                    const input = document.getElementById('publicChatInput');
+                    const message = input.value.trim();
+                    if (message && currentServer) {
+                        publicMessages.push({ sender: username, message, timestamp: Date.now() });
+                        localStorage.setItem(`coneWorksMessages_${sessionId}`, JSON.stringify(publicMessages));
+                        input.value = '';
+                        updatePublicChat();
+                        console.log('Sent public message:', message);
+                    }
+                } catch (e) {
+                    console.error('Send public message error:', e);
+                    alert('Error sending public message. Check console.');
+                }
+            }
+
+            function updatePublicChat() {
+                try {
+                    const messagesDiv = document.getElementById('publicChatMessages');
+                    messagesDiv.innerHTML = publicMessages.map(m => `<div>${m.sender}: ${m.message}</div>`).join('');
+                    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+                    console.log('Updated public chat');
+                } catch (e) {
+                    console.error('Update public chat error:', e);
+                    alert('Error updating public chat. Check console.');
+                }
+            }
+
+            function toggleChatBox() {
+                try {
+                    const chatBox = document.getElementById('chatBox');
+                    chatBox.style.display = chatBox.style.display === 'none' ? 'block' : 'none';
+                    if (chatBox.style.display === 'block') updateChat();
+                    console.log('Toggled chat box:', chatBox.style.display);
+                } catch (e) {
+                    console.error('Toggle chat box error:', e);
+                    alert('Error toggling chat box. Check console.');
+                }
+            }
+
+            function sendMessage() {
+                try {
+                    const input = document.getElementById('chatInput');
+                    const message = input.value.trim();
+                    if (message) {
+                        messages.push({ sender: username, message, timestamp: Date.now() });
+                        localStorage.setItem(`coneWorksMessages_${sessionId}`, JSON.stringify(messages));
+                        input.value = '';
+                        updateChat();
+                        console.log('Sent friend message:', message);
+                    }
+                } catch (e) {
+                    console.error('Send message error:', e);
+                    alert('Error sending friend message. Check console.');
+                }
+            }
+
+            function updateChat() {
+                try {
+                    const messagesDiv = document.getElementById('chatMessages');
+                    messagesDiv.innerHTML = messages.filter(m => friends.includes(m.sender) || m.sender === username).map(m => `<div>${m.sender}: ${m.message}</div>`).join('');
+                    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+                    console.log('Updated friend chat');
+                } catch (e) {
+                    console.error('Update chat error:', e);
+                    alert('Error updating friend chat. Check console.');
+                }
+            }
+
+            function toggleFriendBox() {
+                try {
+                    const friendBox = document.getElementById('friendBox');
+                    friendBox.style.display = friendBox.style.display === 'none' ? 'block' : 'none';
+                    if (friendBox.style.display === 'block') updateFriendList();
+                    console.log('Toggled friend box:', friendBox.style.display);
+                } catch (e) {
+                    console.error('Toggle friend box error:', e);
+                    alert('Error toggling friend box. Check console.');
+                }
+            }
+
+            function updateFriendList() {
+                try {
+                    const friendList = document.getElementById('friendList');
+                    friendList.innerHTML = friends.length ? friends.map(f => `<div>${f} <button onclick="removeFriend('${f}')">Remove</button></div>`).join('') : '<div>No friends yet!</div>';
+                    const requests = document.getElementById('friendRequests');
+                    requests.innerHTML = friendRequestsReceived.length ? friendRequestsReceived.map(r => `<div>${r} <button onclick="acceptFriendRequest('${r}')">Accept</button> <button onclick="declineFriendRequest('${r}')">Decline</button></div>`).join('') : '<div>No friend requests!</div>';
+                    console.log('Updated friend list');
+                } catch (e) {
+                    console.error('Update friend list error:', e);
+                    alert('Error updating friend list. Check console.');
+                }
+            }
+
+            function sendFriendRequest() {
+                try {
+                    const friend = document.getElementById('friendSearch').value.trim();
+                    const friendLower = friend.toLowerCase();
+                    let matchedFriend = Object.keys(accounts).find(u => u.toLowerCase() === friendLower);
+                    if (!matchedFriend || matchedFriend === username || friends.includes(matchedFriend) || friendRequestsSent.includes(matchedFriend)) {
+                        alert('Invalid user, already friends, or request already sent!');
+                        console.log('Send friend request failed:', friend);
+                        return;
+                    }
+                    friendRequestsSent.push(matchedFriend);
+                    accounts[username].requestsSent = friendRequestsSent;
+                    let received = JSON.parse(localStorage.getItem(`coneWorksRequestsReceived_${sessionId}`)) || {};
+                    received[matchedFriend] = received[matchedFriend] || [];
+                    received[matchedFriend].push(username);
+                    localStorage.setItem(`coneWorksRequestsReceived_${sessionId}`, JSON.stringify(received));
+                    localStorage.setItem(`coneWorksAccounts_${sessionId}`, JSON.stringify(accounts));
+                    document.getElementById('friendSearch').value = '';
+                    updateFriendList();
+                    alert(`Friend request sent to ${matchedFriend}!`);
+                    console.log('Friend request sent to:', matchedFriend);
+                } catch (e) {
+                    console.error('Send friend request error:', e);
+                    alert('Error sending friend request. Check console.');
+                }
+            }
+
+            function acceptFriendRequest(friend) {
+                try {
+                    friends.push(friend);
+                    accounts[username].friends = friends;
+                    friendRequestsReceived = friendRequestsReceived.filter(r => r !== friend);
+                    let received = JSON.parse(localStorage.getItem(`coneWorksRequestsReceived_${sessionId}`)) || {};
+                    received[username] = friendRequestsReceived;
+                    localStorage.setItem(`coneWorksRequestsReceived_${sessionId}`, JSON.stringify(received));
+                    accounts[friend].friends = accounts[friend].friends || [];
+                    accounts[friend].friends.push(username);
+                    accounts[friend].requestsSent = accounts[friend].requestsSent.filter(r => r !== username);
+                    localStorage.setItem(`coneWorksAccounts_${sessionId}`, JSON.stringify(accounts));
+                    updateFriendList();
+                    alert(`Accepted friend request from ${friend}!`);
+                    console.log('Accepted friend request from:', friend);
+                } catch (e) {
+                    console.error('Accept friend request error:', e);
+                    alert('Error accepting friend request. Check console.');
+                }
+            }
+
+            function declineFriendRequest(friend) {
+                try {
+                    friendRequestsReceived = friendRequestsReceived.filter(r => r !== friend);
+                    let received = JSON.parse(localStorage.getItem(`coneWorksRequestsReceived_${sessionId}`)) || {};
+                    received[username] = friendRequestsReceived;
+                    localStorage.setItem(`coneWorksRequestsReceived_${sessionId}`, JSON.stringify(received));
+                    accounts[friend].requestsSent = accounts[friend].requestsSent.filter(r => r !== username);
+                    localStorage.setItem(`coneWorksAccounts_${sessionId}`, JSON.stringify(accounts));
+                    updateFriendList();
+                    alert(`Declined friend request from ${friend}!`);
+                    console.log('Declined friend request from:', friend);
+                } catch (e) {
+                    console.error('Decline friend request error:', e);
+                    alert('Error declining friend request. Check console.');
+                }
+            }
+
+            function removeFriend(friend) {
+                try {
+                    friends = friends.filter(f => f !== friend);
+                    accounts[username].friends = friends;
+                    accounts[friend].friends = accounts[friend].friends.filter(f => f !== username);
+                    localStorage.setItem(`coneWorksAccounts_${sessionId}`, JSON.stringify(accounts));
+                    updateFriendList();
+                    alert(`Removed ${friend} from friends!`);
+                    console.log('Removed friend:', friend);
+                } catch (e) {
+                    console.error('Remove friend error:', e);
+                    alert('Error removing friend. Check console.');
+                }
+            }
+
+            function updateFriendSuggestions() {
+                try {
+                    const search = document.getElementById('friendSearch').value.toLowerCase();
+                    const suggestions = document.getElementById('friendSuggestions');
+                    suggestions.innerHTML = '';
+                    Object.keys(accounts).filter(u => u.toLowerCase().includes(search) && u !== username && !friends.includes(u) && !friendRequestsSent.includes(u)).slice(0, 5).forEach(u => {
+                        const div = document.createElement('div');
+                        div.className = 'suggestion';
+                        div.textContent = u;
+                        div.onclick = () => {
+                            document.getElementById('friendSearch').value = u;
+                            updateFriendSuggestions();
+                        };
+                        suggestions.appendChild(div);
+                    });
+                    console.log('Updated friend suggestions');
+                } catch (e) {
+                    console.error('Update friend suggestions error:', e);
+                    alert('Error updating friend suggestions. Check console.');
+                }
+            }
+
+            function testMultiplayer() {
+                try {
+                    alert('Testing multiplayer: Players in session ' + sessionId + ': ' + Object.keys(players).length);
+                    console.log('Multiplayer test:', Object.keys(players), 'Session:', sessionId);
+                } catch (e) {
+                    console.error('Test multiplayer error:', e);
+                    alert('Error testing multiplayer. Check console.');
+                }
+            }
+
             function testUI() {
                 try {
-                    console.log('Testing UI rendering on home page');
-                    if (!ui || !document.body.contains(ui)) {
-                        console.log('#ui not found or detached, creating and appending new #ui div');
-                        ui = document.createElement('div');
-                        ui.id = 'ui';
-                        document.body.appendChild(ui);
-                    }
-                    ui.style.cssText = `
-                        display: block !important;
-                        position: fixed !important;
-                        top: 10px !important;
-                        left: 10px !important;
-                        z-index: 10000 !important;
-                        background: rgba(0, 0, 0, 0.9) !important;
-                        padding: 20px !important;
-                        border-radius: 5px !important;
-                        border: 2px solid #00ffcc !important;
-                        opacity: 1 !important;
-                        visibility: visible !important;
-                        min-width: 200px !important;
-                        pointer-events: auto !important;
-                    `;
-                    ui.innerHTML = '<button id="testButton">Test Button</button>';
-                    ui.offsetHeight;
-                    console.log('Test UI button rendered');
-                    console.log('UI outerHTML:', ui.outerHTML);
-                    console.log('UI dimensions:', { width: ui.offsetWidth, height: ui.offsetHeight });
-                    console.log('UI computed styles:', window.getComputedStyle(ui));
-                    console.log('Parent (body) styles:', window.getComputedStyle(document.body));
-                    const elementsAtPoint = document.elementsFromPoint(10, 10);
-                    console.log('Elements at (10, 10):', elementsAtPoint.map(el => el.id || el.tagName));
-                    const testButton = ui.querySelector('#testButton');
-                    if (testButton) {
-                        console.log('Test Button computed styles:', window.getComputedStyle(testButton));
-                    } else {
-                        console.error('Test Button not found in #ui');
-                        alert('Test Button failed to render in #ui. Check console.');
-                    }
-                    setTimeout(() => {
-                        ui.style.display = 'none';
-                        console.log('Test UI hidden');
-                    }, 5000);
+                    console.log('Testing UI: Adding test button to body');
+                    const existingButton = document.getElementById('testButton');
+                    if (existingButton) existingButton.remove();
+                    const button = document.createElement('button');
+                    button.id = 'testButton';
+                    button.textContent = 'Test UI';
+                    button.onclick = () => alert('Test UI button clicked!');
+                    document.body.appendChild(button);
+                    console.log('Test UI button added');
                 } catch (e) {
                     console.error('Test UI error:', e);
                     alert('Error testing UI. Check console.');
@@ -927,27 +1693,15 @@
 
             function testUI2() {
                 try {
-                    console.log('Testing UI 2 rendering directly on body');
-                    const testBtn = document.createElement('button');
-                    testBtn.id = 'testButton2';
-                    testBtn.textContent = 'Test Button 2';
-                    document.body.appendChild(testBtn);
-                    testBtn.style.position = 'fixed';
-                    testBtn.style.top = '100px';
-                    testBtn.style.left = '10px';
-                    testBtn.style.zIndex = '10001';
-                    testBtn.style.background = '#ff0000';
-                    testBtn.style.color = 'white';
-                    testBtn.style.border = '2px solid white';
-                    testBtn.style.padding = '20px';
-                    testBtn.style.fontSize = '24px';
-                    console.log('Test UI 2 button rendered');
-                    console.log('Test Button 2 dimensions:', { width: testBtn.offsetWidth, height: testBtn.offsetHeight });
-                    console.log('Test Button 2 computed styles:', window.getComputedStyle(testBtn));
-                    setTimeout(() => {
-                        testBtn.remove();
-                        console.log('Test UI 2 button removed');
-                    }, 5000);
+                    console.log('Testing UI 2: Adding second test button to body');
+                    const existingButton = document.getElementById('testButton2');
+                    if (existingButton) existingButton.remove();
+                    const button = document.createElement('button');
+                    button.id = 'testButton2';
+                    button.textContent = 'Test UI 2';
+                    button.onclick = () => alert('Test UI 2 button clicked!');
+                    document.body.appendChild(button);
+                    console.log('Test UI 2 button added');
                 } catch (e) {
                     console.error('Test UI 2 error:', e);
                     alert('Error testing UI 2. Check console.');
@@ -956,27 +1710,1167 @@
 
             function toggleFullscreen() {
                 try {
+                    const fullscreenBtn = document.getElementById('fullscreenBtn');
                     if (!document.fullscreenElement) {
-                        canvas.requestFullscreen().catch(e => console.error('Fullscreen error:', e));
+                        document.documentElement.requestFullscreen().then(() => {
+                            fullscreenBtn.textContent = 'Exit Fullscreen';
+                            console.log('Entered fullscreen mode');
+                        }).catch(e => {
+                            console.error('Fullscreen error:', e);
+                            alert('Failed to enter fullscreen mode');
+                        });<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Permissions-Policy" content="fullscreen=(self)">
+    <title>ConeWorks</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+        h1 {
+            font-size: 3.5em;
+            text-shadow: 0 0 10px #00ffcc;
+            margin-bottom: 10px;
+        }
+        p {
+            font-size: 1.2em;
+            max-width: 600px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        #versionDisplay {
+            font-size: 1em;
+            color: #00ffcc;
+            margin-bottom: 20px;
+        }
+        .login-container, .game-buttons, .settings-container {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            align-items: center;
+        }
+        .game-buttons { flex-direction: row; flex-wrap: wrap; }
+        input, button, select {
+            padding: 10px;
+            font-size: 1.1em;
+            border: none;
+            border-radius: 5px;
+        }
+        input, select {
+            width: 200px;
+            background: #fff;
+            color: #333;
+        }
+        button {
+            background: linear-gradient(to right, #ff6b6b, #ff8e53);
+            color: white;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+        button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+        }
+        button#resetDataBtn {
+            background: #f44336;
+        }
+        canvas {
+            display: none;
+            border: 3px solid #00ffcc;
+            border-radius: 10px;
+            background: #000;
+        }
+        #ui {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 10;
+            font-size: 16px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 10px;
+            border-radius: 5px;
+        }
+        #ui button {
+            margin: 5px;
+            padding: 8px;
+            font-size: 14px;
+        }
+        #publicChat {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            width: 300px;
+            height: 150px;
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 10px;
+            padding: 10px;
+            font-size: 14px;
+            overflow-y: auto;
+            display: none;
+        }
+        #publicChatInput {
+            width: 280px;
+            margin-top: 5px;
+        }
+        #chatBox {
+            position: absolute;
+            top: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 400px;
+            height: 300px;
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 10px;
+            padding: 10px;
+            display: none;
+            font-size: 14px;
+            overflow-y: auto;
+        }
+        #chatInput {
+            width: 380px;
+            margin-top: 5px;
+        }
+        #friendBox {
+            position: absolute;
+            top: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 250px;
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 10px;
+            padding: 10px;
+            display: none;
+            font-size: 14px;
+        }
+        #playerListBox {
+            position: absolute;
+            top: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 300px;
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 10px;
+            padding: 10px;
+            display: none;
+            font-size: 14px;
+            overflow-y: auto;
+            max-height: 400px;
+        }
+        #friendSearch, #serverSearch, #newServerName, #deleteUsername, #deletePassword {
+            width: 220px;
+            margin-bottom: 5px;
+        }
+        #friendSuggestions, #serverSuggestions {
+            max-height: 100px;
+            overflow-y: auto;
+            background: #333;
+            border-radius: 5px;
+        }
+        .suggestion {
+            padding: 5px;
+            cursor: pointer;
+        }
+        .suggestion:hover {
+            background: #555;
+        }
+        #notification {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            background: #00ffcc;
+            color: #000;
+            padding: 10px;
+            border-radius: 5px;
+            display: none;
+            max-width: 300px;
+        }
+        #voteBox {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            padding: 20px;
+            border-radius: 10px;
+            display: none;
+            text-align: center;
+        }
+        #reportBox {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            padding: 20px;
+            border-radius: 10px;
+            display: none;
+            text-align: center;
+        }
+        #shopBox {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            padding: 20px;
+            border-radius: 10px;
+            display: none;
+            text-align: center;
+        }
+        #skinBox {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            padding: 20px;
+            border-radius: 10px;
+            display: none;
+            text-align: center;
+        }
+        #deleteAccountBox {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            padding: 20px;
+            border-radius: 10px;
+            display: none;
+            text-align: center;
+        }
+        .back-btn {
+            position: absolute;
+            top: 50px;
+            right: 10px;
+            padding: 10px 20px;
+            background: #f44336;
+            color: white;
+        }
+        .back-btn:hover {
+            background: #da190b;
+        }
+        #fullscreenBtn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            padding: 10px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            z-index: 10;
+        }
+        #coneconDisplay {
+            position: absolute;
+            top: 10px;
+            font-size: 20px;
+            color: yellow;
+        }
+        #controlsBox {
+            display: none;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 10px;
+            text-align: left;
+            max-width: 300px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 5px;
+            text-align: left;
+            border-bottom: 1px solid #555;
+        }
+    </style>
+</head>
+<body>
+    <button id="fullscreenBtn" onclick="toggleFullscreen()">Fullscreen</button>
+    <div id="loginPage">
+        <h1>ConeWorks</h1>
+        <div id="versionDisplay">Version 2.9</div>
+        <p>Sign in or create an account to brawl and chill!</p>
+        <div class="login-container">
+            <input id="username" type="text" placeholder="Username">
+            <input id="password" type="password" placeholder="Password">
+            <button onclick="login()">Login</button>
+            <button onclick="signup()">Sign Up</button>
+            <button onclick="toggleControls()">Show Controls</button>
+            <button id="resetDataBtn" onclick="resetData()">Reset Data</button>
+            <div id="controlsBox">
+                <h3>Controls</h3>
+                <ul>
+                    <li><b>WASD/Arrow Keys</b>: Move (camera-relative)</li>
+                    <li><b>Space</b>: Jump</li>
+                    <li><b>E</b>: Attack (Fight mode)</li>
+                    <li><b>C</b>: Toggle server chat</li>
+                    <li><b>UI Buttons</b>: Open Skin Shop, Weapon Shop, Player List, Toggle POV, Report Player</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    <div id="homePage" style="display: none;">
+        <div id="coneconDisplay">Conecons: 0</div>
+        <h1>ConeWorks</h1>
+        <div id="versionDisplay">Version 2.9</div>
+        <p>Create or join epic servers to brawl or chill.</p>
+        <div class="game-buttons">
+            <button onclick="loadServerPage()">Join Server</button>
+            <button onclick="loadCreateServerPage()">Create Server</button>
+            <button onclick="toggleChatBox()">Chat & Friends</button>
+            <button onclick="toggleFriendBox()">Search Players</button>
+            <button onclick="togglePlayerList()">Player List</button>
+            <button onclick="testMultiplayer()">Test Multiplayer</button>
+            <button onclick="loadSettingsPage()">Settings</button>
+        </div>
+        <p>Earn 1 Conecon per minute in-game to buy skins and weapons!</p>
+    </div>
+    <div id="serverPage" style="display: none;">
+        <h1>Join a Server</h1>
+        <p>Search for a server or join a random one!</p>
+        <input id="serverSearch" type="text" placeholder="Search servers..." oninput="updateServerSuggestions(); updateServerList()">
+        <label for="modeFilter">Filter Mode:</label>
+        <select id="modeFilter" aria-label="Filter servers by game mode" onchange="updateServerSuggestions(); updateServerList()">
+            <option value="all">All Modes</option>
+            <option value="fight">Fight</option>
+            <option value="chill">Chill</option>
+        </select>
+        <div id="serverSuggestions"></div>
+        <div id="serverList">
+            <table>
+                <thead>
+                    <tr><th>Name</th><th>Mode</th><th>Players</th><th>Action</th></tr>
+                </thead>
+                <tbody id="serverTableBody"></tbody>
+            </table>
+        </div>
+        <div class="game-buttons">
+            <button onclick="joinServer('random')">Join Random</button>
+            <button onclick="joinServer(document.getElementById('serverSearch').value)">Join Server</button>
+            <button onclick="showHome()">Back</button>
+        </div>
+    </div>
+    <div id="createServerPage" style="display: none;">
+        <h1>Create a Server</h1>
+        <p>Choose a name and mode for your server!</p>
+        <input id="newServerName" type="text" placeholder="Server Name">
+        <label for="newServerMode">Server Mode:</label>
+        <select id="newServerMode" aria-label="Select server game mode">
+            <option value="fight">Fight</option>
+            <option value="chill">Chill</option>
+        </select>
+        <div class="game-buttons">
+            <button onclick="createServer()">Create</button>
+            <button onclick="showHome()">Back</button>
+        </div>
+    </div>
+    <div id="settingsPage" style="display: none;">
+        <h1>Settings</h1>
+        <p>Customize your ConeWorks experience.</p>
+        <div class="settings-container">
+            <label for="defaultPOV">Default POV on Join:</label>
+            <select id="defaultPOV" aria-label="Select default camera perspective">
+                <option value="third">Third-Person</option>
+                <option value="first">First-Person</option>
+            </select>
+            <label for="mouseSensitivity">Mouse Sensitivity:</label>
+            <input type="range" id="mouseSensitivity" min="0.001" max="0.01" step="0.001" value="0.002">
+            <label for="currencyDisplay">Currency Display:</label>
+            <select id="currencyDisplay" aria-label="Select currency display position">
+                <option value="top-left">Top-Left</option>
+                <option value="top-right">Top-Right</option>
+            </select>
+            <button onclick="saveSettings()">Save</button>
+            <button onclick="backupData()">Backup Data</button>
+            <button onclick="restoreData()">Restore Data</button>
+            <button onclick="showDeleteAccount()">Delete Account</button>
+            <button onclick="showHome()">Back</button>
+        </div>
+    </div>
+    <div id="deleteAccountBox" style="display: none;">
+        <h2>Delete Account</h2>
+        <p>Enter your username and password to confirm deletion.</p>
+        <input id="deleteUsername" type="text" placeholder="Username">
+        <input id="deletePassword" type="password" placeholder="Password">
+        <div class="game-buttons">
+            <button onclick="deleteAccount()">Confirm Delete</button>
+            <button onclick="document.getElementById('deleteAccountBox').style.display='none'">Cancel</button>
+        </div>
+    </div>
+    <div id="playerListBox" style="display: none;">
+        <h2>Player Leaderboard</h2>
+        <table>
+            <thead>
+                <tr><th>Username</th><th>Wins</th><th>Conecons</th><th>Action</th></tr>
+            </thead>
+            <tbody id="playerList"></tbody>
+        </table>
+        <button onclick="togglePlayerList()">Close</button>
+    </div>
+    <canvas id="canvas" width="800" height="600" allow="fullscreen"></canvas>
+    <button id="backBtn" class="back-btn" onclick="leaveServer()" style="display: none;">Leave Server</button>
+    <button id="homeBtn" class="back-btn" onclick="showHome()" style="display: none;">Back to Home</button>
+    <div id="ui" style="display: none;"></div>
+    <div id="publicChat" style="display: none;">
+        <div id="publicChatMessages"></div>
+        <input id="publicChatInput" type="text" placeholder="Server chat..." onkeydown="if(event.key === 'Enter') sendPublicMessage()">
+    </div>
+    <div id="chatBox" style="display: none;">
+        <div id="chatMessages"></div>
+        <input id="chatInput" type="text" placeholder="Message friends..." onkeydown="if(event.key === 'Enter') sendMessage()">
+        <button onclick="toggleChatBox()">Close</button>
+    </div>
+    <div id="friendBox" style="display: none;">
+        <div>Friends</div>
+        <input id="friendSearch" type="text" placeholder="Search players..." oninput="updateFriendSuggestions()">
+        <div id="friendSuggestions"></div>
+        <div id="friendList"></div>
+        <div id="friendRequests"></div>
+        <button onclick="sendFriendRequest()">Send Friend Request</button>
+        <button onclick="toggleFriendBox()">Close</button>
+    </div>
+    <div id="notification"></div>
+    <div id="voteBox" style="display: none;">
+        <h2>Vote for Next Map</h2>
+        <div id="voteOptions"></div>
+        <button onclick="closeVote()">Close</button>
+    </div>
+    <div id="reportBox" style="display: none;">
+        <h2>Report Player</h2>
+        <label for="reportPlayer">Select Player:</label>
+        <select id="reportPlayer" aria-label="Select player to report"></select>
+        <button onclick="submitReport()">Report</button>
+        <button onclick="document.getElementById('reportBox').style.display='none'">Cancel</button>
+    </div>
+    <div id="shopBox" style="display: none;">
+        <h2>Weapons Shop</h2>
+        <div id="weaponList"></div>
+        <button onclick="document.getElementById('shopBox').style.display='none'">Close</button>
+    </div>
+    <div id="skinBox" style="display: none;">
+        <h2>Skins Shop</h2>
+        <div id="skinList"></div>
+        <button onclick="document.getElementById('skinBox').style.display='none'">Close</button>
+    </div>
+    <input id="restoreInput" type="file" accept=".json" style="display: none;" onchange="handleRestore(event)" title="Restore backup file">
+    <label for="restoreInput" style="display: none;">Restore Backup</label>
+
+    <script>
+        try {
+            console.log('Script loaded successfully');
+            let version = 2.9;
+            let username = null;
+            let accounts = JSON.parse(localStorage.getItem('coneWorksAccounts')) || {};
+            let servers = JSON.parse(localStorage.getItem('coneWorksServers')) || [];
+            let currentServer = null;
+            let conecon = 0;
+            let equippedSkin = 'default-boy';
+            let equippedWeapon = 'fist';
+            let friends = [];
+            let friendRequestsSent = [];
+            let friendRequestsReceived = [];
+            let messages = JSON.parse(localStorage.getItem('coneWorksMessages')) || [];
+            let publicMessages = [];
+            let pov = 'third';
+            let skins = {
+                'default-boy': { cost: 0, color: [1, 0, 0, 1] },
+                'default-girl': { cost: 0, color: [1, 0.5, 0.5, 1] },
+                'ninja-boy': { cost: 50, color: [0.2, 0.2, 0.2, 1] }
+            };
+            let weapons = {
+                'fist': { cost: 0, damage: 10 },
+                'sword': { cost: 20, damage: 20 }
+            };
+            const canvas = document.getElementById('canvas');
+            const ctx = canvas.getContext('2d');
+            const ui = document.getElementById('ui');
+            const coneconDisplay = document.getElementById('coneconDisplay');
+            let player = { x: 400, y: 300, z: 0, speed: 5, jumping: false, jumpHeight: 50 };
+
+            function resetData() {
+                localStorage.clear();
+                accounts = {};
+                accounts['conehead8654'] = { password: 'Di@d09202015', friends: [], requestsSent: [], wins: 0, conecon: 100, equippedSkin: 'default-boy', equippedWeapon: 'fist' };
+                servers = [];
+                localStorage.setItem('coneWorksAccounts', JSON.stringify(accounts));
+                localStorage.setItem('coneWorksServers', JSON.stringify(servers));
+                alert('Data reset! Try logging in with conehead8654.');
+                console.log('Data reset');
+            }
+
+            function login() {
+                try {
+                    const user = document.getElementById('username').value.trim();
+                    const pass = document.getElementById('password').value;
+                    const userLower = user.toLowerCase();
+                    let matchedUser = Object.keys(accounts).find(u => u.toLowerCase() === userLower);
+                    if (matchedUser && accounts[matchedUser].password === pass) {
+                        username = matchedUser;
+                        conecon = accounts[matchedUser].conecon || 0;
+                        equippedSkin = accounts[matchedUser].equippedSkin || 'default-boy';
+                        equippedWeapon = accounts[matchedUser].equippedWeapon || 'fist';
+                        friends = accounts[matchedUser].friends || [];
+                        friendRequestsSent = accounts[matchedUser].requestsSent || [];
+                        friendRequestsReceived = JSON.parse(localStorage.getItem('coneWorksRequestsReceived'))?.[matchedUser] || [];
+                        document.getElementById('loginPage').style.display = 'none';
+                        document.getElementById('homePage').style.display = 'block';
+                        document.getElementById('fullscreenBtn').style.display = 'block';
+                        updateConeconDisplay();
+                        updateFriendList();
+                        console.log('Login successful:', matchedUser);
                     } else {
-                        document.exitFullscreen();
+                        alert('Invalid username or password!');
                     }
-                    console.log('Toggled fullscreen');
+                } catch (e) {
+                    console.error('Login error:', e);
+                    alert('Error logging in. Check console.');
+                }
+            }
+
+            function signup() {
+                try {
+                    const user = document.getElementById('username').value.trim();
+                    const pass = document.getElementById('password').value;
+                    const userLower = user.toLowerCase();
+                    if (user && pass && !Object.keys(accounts).some(u => u.toLowerCase() === userLower) && userLower !== 'conehead8654') {
+                        accounts[user] = { password: pass, friends: [], requestsSent: [], wins: 0, conecon: 0, equippedSkin: 'default-boy', equippedWeapon: 'fist' };
+                        localStorage.setItem('coneWorksAccounts', JSON.stringify(accounts));
+                        username = user;
+                        conecon = 0;
+                        equippedSkin = 'default-boy';
+                        equippedWeapon = 'fist';
+                        friends = [];
+                        friendRequestsSent = [];
+                        friendRequestsReceived = [];
+                        document.getElementById('loginPage').style.display = 'none';
+                        document.getElementById('homePage').style.display = 'block';
+                        document.getElementById('fullscreenBtn').style.display = 'block';
+                        updateConeconDisplay();
+                        console.log('Signup successful:', user);
+                    } else {
+                        alert(Object.keys(accounts).some(u => u.toLowerCase() === userLower) ? 'Username taken!' : 'Invalid username/password or reserved name!');
+                    }
+                } catch (e) {
+                    console.error('Signup error:', e);
+                    alert('Error signing up. Check console.');
+                }
+            }
+
+            function toggleControls() {
+                try {
+                    const controlsBox = document.getElementById('controlsBox');
+                    controlsBox.style.display = controlsBox.style.display === 'none' ? 'block' : 'none';
+                    console.log('Toggled controls:', controlsBox.style.display);
+                } catch (e) {
+                    console.error('Toggle controls error:', e);
+                    alert('Error showing controls. Check console.');
+                }
+            }
+
+            function updateConeconDisplay() {
+                coneconDisplay.textContent = `Conecons: ${conecon}`;
+            }
+
+            function showHome() {
+                document.getElementById('homePage').style.display = 'block';
+                document.getElementById('serverPage').style.display = 'none';
+                document.getElementById('createServerPage').style.display = 'none';
+                document.getElementById('settingsPage').style.display = 'none';
+                document.getElementById('fullscreenBtn').style.display = 'block';
+                document.getElementById('backBtn').style.display = 'none';
+                document.getElementById('homeBtn').style.display = 'none';
+                document.getElementById('publicChat').style.display = 'none';
+                canvas.style.display = 'none';
+                ui.style.display = 'none';
+                updateFriendList();
+                console.log('Returned to home page');
+            }
+
+            function loadServerPage() {
+                document.getElementById('homePage').style.display = 'none';
+                document.getElementById('serverPage').style.display = 'block';
+                document.getElementById('fullscreenBtn').style.display = 'block';
+                updateServerList();
+                console.log('Loaded server page');
+            }
+
+            function loadCreateServerPage() {
+                document.getElementById('homePage').style.display = 'none';
+                document.getElementById('createServerPage').style.display = 'block';
+                document.getElementById('fullscreenBtn').style.display = 'block';
+                console.log('Loaded create server page');
+            }
+
+            function loadSettingsPage() {
+                document.getElementById('homePage').style.display = 'none';
+                document.getElementById('settingsPage').style.display = 'block';
+                document.getElementById('fullscreenBtn').style.display = 'block';
+                console.log('Loaded settings page');
+            }
+
+            function createServer() {
+                try {
+                    const name = document.getElementById('newServerName').value.trim();
+                    const mode = document.getElementById('newServerMode').value;
+                    if (name && !servers.find(s => s.name === name)) {
+                        servers.push({ name, mode, players: [username], owner: username });
+                        localStorage.setItem('coneWorksServers', JSON.stringify(servers));
+                        joinServer(name);
+                        console.log('Server created:', name, mode);
+                    } else {
+                        alert('Server name taken or invalid!');
+                        console.log('Failed to create server:', name);
+                    }
+                } catch (e) {
+                    console.error('Create server error:', e);
+                    alert('Error creating server. Check console.');
+                }
+            }
+
+            function updateServerList() {
+                try {
+                    const tbody = document.getElementById('serverTableBody');
+                    tbody.innerHTML = '';
+                    servers.forEach(s => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `<td>${s.name}</td><td>${s.mode}</td><td>${s.players ? s.players.length : 0}</td><td><button onclick="joinServer('${s.name}')">Join</button></td>`;
+                        tbody.appendChild(row);
+                    });
+                    console.log('Updated server list:', servers.length, 'servers');
+                } catch (e) {
+                    console.error('Update server list error:', e);
+                    alert('Error updating server list. Check console.');
+                }
+            }
+
+            function updateServerSuggestions() {
+                try {
+                    const search = document.getElementById('serverSearch').value.toLowerCase();
+                    const mode = document.getElementById('modeFilter').value;
+                    const suggestions = document.getElementById('serverSuggestions');
+                    suggestions.innerHTML = '';
+                    servers.filter(s => (mode === 'all' || s.mode === mode) && s.name.toLowerCase().includes(search)).slice(0, 5).forEach(s => {
+                        const div = document.createElement('div');
+                        div.className = 'suggestion';
+                        div.textContent = s.name;
+                        div.onclick = () => joinServer(s.name);
+                        suggestions.appendChild(div);
+                    });
+                    console.log('Updated server suggestions');
+                } catch (e) {
+                    console.error('Update server suggestions error:', e);
+                    alert('Error updating suggestions. Check console.');
+                }
+            }
+
+            function joinServer(name) {
+                try {
+                    if (name === 'random') {
+                        if (servers.length === 0) {
+                            alert('No servers available!');
+                            console.log('No servers available for random join');
+                            return;
+                        }
+                        currentServer = servers.reduce((max, s) => (s.players?.length || 0) > (max.players?.length || 0) ? s : max, servers[0]);
+                    } else {
+                        currentServer = servers.find(s => s.name === name);
+                    }
+                    if (currentServer) {
+                        if (!currentServer.players) currentServer.players = [];
+                        currentServer.players.push(username);
+                        localStorage.setItem('coneWorksServers', JSON.stringify(servers));
+                        document.getElementById('serverPage').style.display = 'none';
+                        canvas.style.display = 'block';
+                        document.getElementById('fullscreenBtn').style.display = 'block';
+                        document.getElementById('backBtn').style.display = 'block';
+                        document.getElementById('homeBtn').style.display = 'none';
+                        document.getElementById('publicChat').style.display = 'block';
+                        startGame();
+                        console.log('Joined server:', currentServer.name, 'Players:', currentServer.players.length);
+                    } else {
+                        alert('Server not found!');
+                        console.log('Server not found:', name);
+                    }
+                } catch (e) {
+                    console.error('Join server error:', e);
+                    alert('Error joining server. Check console.');
+                }
+            }
+
+            function leaveServer() {
+                try {
+                    if (currentServer) {
+                        currentServer.players = currentServer.players.filter(p => p !== username);
+                        if (currentServer.players.length === 0) {
+                            servers = servers.filter(s => s.name !== currentServer.name);
+                        }
+                        localStorage.setItem('coneWorksServers', JSON.stringify(servers));
+                    }
+                    currentServer = null;
+                    canvas.style.display = 'none';
+                    document.getElementById('fullscreenBtn').style.display = 'block';
+                    document.getElementById('backBtn').style.display = 'none';
+                    document.getElementById('publicChat').style.display = 'none';
+                    ui.style.display = 'none';
+                    showHome();
+                    console.log('Left server');
+                } catch (e) {
+                    console.error('Leave server error:', e);
+                    alert('Error leaving server. Check console.');
+                }
+            }
+
+            function startGame() {
+                try {
+                    player = { x: 400, y: 300, z: 0, speed: 5, jumping: false, jumpHeight: 50 };
+                    canvas.style.display = 'block';
+                    ui.style.display = 'block';
+                    ui.innerHTML = `
+                        <button onclick="document.getElementById('skinBox').style.display='block'">Skin Shop</button>
+                        <button onclick="document.getElementById('shopBox').style.display='block'">Weapon Shop</button>
+                        <button onclick="togglePOV()">Toggle POV</button>
+                        ${username === 'conehead8654' ? '<button onclick="document.getElementById(\'reportBox\').style.display=\'block\'">Report Player</button>' : ''}
+                        <button onclick="togglePlayerList()">Player List</button>
+                    `;
+                    function gameLoop() {
+                        ctx.clearRect(0, 0, canvas.width, canvas.height);
+                        ctx.fillStyle = 'green';
+                        ctx.fillRect(0, 300, canvas.width, canvas.height);
+                        ctx.strokeStyle = `rgb(${skins[equippedSkin].color[0] * 255}, ${skins[equippedSkin].color[1] * 255}, ${skins[equippedSkin].color[2] * 255})`;
+                        ctx.lineWidth = 2;
+                        ctx.beginPath();
+                        ctx.arc(player.x + 10, player.y - player.z - 5, 5, 0, Math.PI * 2);
+                        ctx.stroke();
+                        ctx.beginPath();
+                        ctx.moveTo(player.x + 10, player.y - player.z);
+                        ctx.lineTo(player.x + 10, player.y - player.z + 15);
+                        ctx.stroke();
+                        ctx.beginPath();
+                        ctx.moveTo(player.x + 5, player.y - player.z + 5);
+                        ctx.lineTo(player.x + 15, player.y - player.z + 5);
+                        ctx.stroke();
+                        ctx.beginPath();
+                        ctx.moveTo(player.x + 10, player.y - player.z + 15);
+                        ctx.lineTo(player.x + 5, player.y - player.z + 25);
+                        ctx.lineTo(player.x + 10, player.y - player.z + 15);
+                        ctx.lineTo(player.x + 15, player.y - player.z + 25);
+                        ctx.stroke();
+                        ctx.fillStyle = 'white';
+                        ctx.font = '12px Arial';
+                        ctx.fillText(username, player.x, player.y - player.z - 15);
+                        if (!player.jumping) {
+                            player.y = Math.min(Math.max(player.y, 285), 450);
+                            player.z = 0;
+                        }
+                        requestAnimationFrame(gameLoop);
+                    }
+                    document.addEventListener('keydown', e => {
+                        if (document.activeElement !== document.getElementById('publicChatInput') && 
+                            document.activeElement !== document.getElementById('chatInput')) {
+                            if (e.key === 'w' || e.key === 'ArrowUp') {
+                                player.y = Math.max(285, player.y - player.speed);
+                            }
+                            if (e.key === 's' || e.key === 'ArrowDown') {
+                                player.y = Math.min(450, player.y + player.speed);
+                            }
+                            if (e.key === 'a' || e.key === 'ArrowLeft') {
+                                player.x = Math.max(0, player.x - player.speed);
+                            }
+                            if (e.key === 'd' || e.key === 'ArrowRight') {
+                                player.x = Math.min(800, player.x + player.speed);
+                            }
+                            if (e.key === ' ') {
+                                if (!player.jumping) {
+                                    player.jumping = true;
+                                    let jump = 0;
+                                    const currentY = player.y;
+                                    const jumpInterval = setInterval(() => {
+                                        jump += 5;
+                                        player.z = Math.sin(jump / (player.jumpHeight * 0.8) * Math.PI) * player.jumpHeight;
+                                        player.y = currentY;
+                                        if (jump >= player.jumpHeight * 1.2) {
+                                            player.z = 0;
+                                            player.jumping = false;
+                                            player.y = Math.min(Math.max(currentY, 285), 450);
+                                            clearInterval(jumpInterval);
+                                        }
+                                    }, 10);
+                                }
+                            }
+                            if (e.key === 'c') {
+                                document.getElementById('publicChat').style.display = document.getElementById('publicChat').style.display === 'none' ? 'block' : 'none';
+                                if (document.getElementById('publicChat').style.display === 'block') {
+                                    document.getElementById('publicChatInput').focus();
+                                }
+                            }
+                        }
+                    });
+                    gameLoop();
+                    console.log('Game started');
+                } catch (e) {
+                    console.error('Start game error:', e);
+                    alert('Error starting game. Check console.');
+                }
+            }
+
+            function togglePOV() {
+                pov = pov === 'third' ? 'first' : 'third';
+                console.log('Toggled POV to:', pov);
+            }
+
+            function toggleFullscreen() {
+                try {
+                    if (!document.fullscreenEnabled) {
+                        alert('Fullscreen not allowed by browser settings. Check browser permissions or try another browser.');
+                        return;
+                    }
+                    if (!document.fullscreenElement) {
+                        if (canvas.style.display === 'block') {
+                            canvas.requestFullscreen().catch(e => {
+                                console.error('Fullscreen error:', e);
+                                alert('Failed to enter fullscreen. Check browser settings.');
+                            });
+                        } else {
+                            document.documentElement.requestFullscreen().catch(e => {
+                                console.error('Fullscreen error:', e);
+                                alert('Failed to enter fullscreen. Check browser settings.');
+                            });
+                        }
+                    } else {
+                        document.exitFullscreen().catch(e => {
+                            console.error('Exit fullscreen error:', e);
+                            alert('Failed to exit fullscreen. Check browser settings.');
+                        });
+                    }
                 } catch (e) {
                     console.error('Fullscreen toggle error:', e);
                     alert('Error toggling fullscreen. Check console.');
                 }
             }
 
-            // Initialize default admin account if not exists
-            if (!Object.keys(accounts).some(u => u.toLowerCase() === 'conehead8654')) {
-                accounts['conehead8654'] = { password: 'Di@d09202015', friends: [], requestsSent: [], wins: 0, conecon: 100, equippedSkin: 'default-boy', equippedWeapon: 'fist' };
-                localStorage.setItem(`coneWorksAccounts_${sessionId}`, JSON.stringify(accounts));
-                console.log('Initialized default admin account: conehead8654');
+            function toggleChatBox() {
+                const chatBox = document.getElementById('chatBox');
+                chatBox.style.display = chatBox.style.display === 'none' ? 'block' : 'none';
+                updateFriendList();
             }
+
+            function toggleFriendBox() {
+                const friendBox = document.getElementById('friendBox');
+                friendBox.style.display = friendBox.style.display === 'none' ? 'block' : 'none';
+                updateFriendSuggestions();
+                updateFriendList();
+            }
+
+            function togglePlayerList() {
+                const playerListBox = document.getElementById('playerListBox');
+                playerListBox.style.display = playerListBox.style.display === 'none' ? 'block' : 'none';
+                updatePlayerList();
+            }
+
+            function updateFriendSuggestions() {
+                try {
+                    const search = document.getElementById('friendSearch').value.toLowerCase();
+                    const suggestions = document.getElementById('friendSuggestions');
+                    suggestions.innerHTML = '';
+                    Object.keys(accounts).filter(u => u !== username && u.toLowerCase().includes(search) && !friends.includes(u)).slice(0, 5).forEach(u => {
+                        const div = document.createElement('div');
+                        div.className = 'suggestion';
+                        div.textContent = u;
+                        div.onclick = () => document.getElementById('friendSearch').value = u;
+                        suggestions.appendChild(div);
+                    });
+                    console.log('Updated friend suggestions');
+                } catch (e) {
+                    console.error('Update friend suggestions error:', e);
+                    alert('Error updating friend suggestions. Check console.');
+                }
+            }
+
+            function sendFriendRequest() {
+                try {
+                    const target = document.getElementById('friendSearch').value.trim();
+                    if (target && accounts[target] && target !== username && !friends.includes(target) && !friendRequestsSent.includes(target)) {
+                        friendRequestsSent.push(target);
+                        accounts[username].requestsSent = friendRequestsSent;
+                        let received = JSON.parse(localStorage.getItem('coneWorksRequestsReceived')) || {};
+                        received[target] = received[target] || [];
+                        received[target].push(username);
+                        localStorage.setItem('coneWorksRequestsReceived', JSON.stringify(received));
+                        localStorage.setItem('coneWorksAccounts', JSON.stringify(accounts));
+                        alert(`Friend request sent to ${target}!`);
+                        updateFriendList();
+                        console.log('Friend request sent to:', target);
+                    } else {
+                        alert('Invalid user or request already sent!');
+                    }
+                } catch (e) {
+                    console.error('Send friend request error:', e);
+                    alert('Error sending friend request. Check console.');
+                }
+            }
+
+            function acceptFriendRequest(target) {
+                try {
+                    if (friendRequestsReceived.includes(target)) {
+                        friends.push(target);
+                        accounts[username].friends = friends;
+                        friendRequestsReceived = friendRequestsReceived.filter(u => u !== target);
+                        let received = JSON.parse(localStorage.getItem('coneWorksRequestsReceived')) || {};
+                        received[username] = friendRequestsReceived;
+                        localStorage.setItem('coneWorksRequestsReceived', JSON.stringify(received));
+                        localStorage.setItem('coneWorksAccounts', JSON.stringify(accounts));
+                        alert(`Friend request from ${target} accepted!`);
+                        updateFriendList();
+                        console.log('Accepted friend request from:', target);
+                    }
+                } catch (e) {
+                    console.error('Accept friend request error:', e);
+                    alert('Error accepting friend request. Check console.');
+                }
+            }
+
+            function rejectFriendRequest(target) {
+                try {
+                    if (friendRequestsReceived.includes(target)) {
+                        friendRequestsReceived = friendRequestsReceived.filter(u => u !== target);
+                        let received = JSON.parse(localStorage.getItem('coneWorksRequestsReceived')) || {};
+                        received[username] = friendRequestsReceived;
+                        localStorage.setItem('coneWorksRequestsReceived', JSON.stringify(received));
+                        alert(`Friend request from ${target} rejected!`);
+                        updateFriendList();
+                        console.log('Rejected friend request from:', target);
+                    }
+                } catch (e) {
+                    console.error('Reject friend request error:', e);
+                    alert('Error rejecting friend request. Check console.');
+                }
+            }
+
+            function updateFriendList() {
+                try {
+                    const friendList = document.getElementById('friendList');
+                    friendList.innerHTML = '<h3>Friends</h3>' + (friends.length ? friends.map(f => `<div>${f}</div>`).join('') : '<div>No friends yet</div>');
+                    const friendRequests = document.getElementById('friendRequests');
+                    friendRequests.innerHTML = '<h3>Friend Requests</h3>' + (friendRequestsReceived.length ? friendRequestsReceived.map(r => `<div>${r} <button onclick="acceptFriendRequest('${r}')">Accept</button><button onclick="rejectFriendRequest('${r}')">Reject</button></div>`).join('') : '<div>No pending requests</div>');
+                    console.log('Updated friend list and requests');
+                } catch (e) {
+                    console.error('Update friend list error:', e);
+                    alert('Error updating friend list. Check console.');
+                }
+            }
+
+            function updatePlayerList() {
+                try {
+                    const tbody = document.getElementById('playerList');
+                    tbody.innerHTML = '';
+                    Object.keys(accounts).filter(u => u !== username).forEach(u => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `<td>${u}</td><td>${accounts[u].wins || 0}</td><td>${accounts[u].conecon || 0}</td><td><button onclick="sendFriendRequestTo('${u}')">Add Friend</button></td>`;
+                        tbody.appendChild(row);
+                    });
+                    console.log('Updated player list');
+                } catch (e) {
+                    console.error('Update player list error:', e);
+                    alert('Error updating player list. Check console.');
+                }
+            }
+
+            function sendFriendRequestTo(user) {
+                document.getElementById('friendSearch').value = user;
+                sendFriendRequest();
+            }
+
+            function sendMessage() {
+                const msg = document.getElementById('chatInput').value.trim();
+                if (msg) {
+                    messages.push({ from: username, text: msg, time: new Date().toISOString() });
+                    localStorage.setItem('coneWorksMessages', JSON.stringify(messages));
+                    document.getElementById('chatInput').value = '';
+                    updateChat();
+                }
+            }
+
+            function sendPublicMessage() {
+                const msg = document.getElementById('publicChatInput').value.trim();
+                if (msg) {
+                    publicMessages.push({ from: username, text: msg, time: new Date().toISOString() });
+                    document.getElementById('publicChatInput').value = '';
+                    updatePublicChat();
+                }
+            }
+
+            function updateChat() {
+                const chatMessages = document.getElementById('chatMessages');
+                chatMessages.innerHTML = messages.map(m => `<div>${m.from}: ${m.text} (${new Date(m.time).toLocaleTimeString()})</div>`).join('');
+            }
+
+            function updatePublicChat() {
+                const publicChatMessages = document.getElementById('publicChatMessages');
+                publicChatMessages.innerHTML = publicMessages.map(m => `<div>${m.from}: ${m.text} (${new Date(m.time).toLocaleTimeString()})</div>`).join('');
+                publicChatMessages.scrollTop = publicChatMessages.scrollHeight;
+            }
+
+            function saveSettings() {
+                const pov = document.getElementById('defaultPOV').value;
+                const sensitivity = document.getElementById('mouseSensitivity').value;
+                const currency = document.getElementById('currencyDisplay').value;
+                localStorage.setItem('coneWorksDefaultPOV', pov);
+                localStorage.setItem('coneWorksMouseSensitivity', sensitivity);
+                localStorage.setItem('coneWorksCurrencyDisplay', currency);
+                alert('Settings saved!');
+            }
+
+            function backupData() {
+                const data = {
+                    accounts: localStorage.getItem('coneWorksAccounts'),
+                    messages: localStorage.getItem('coneWorksMessages'),
+                    servers: localStorage.getItem('coneWorksServers'),
+                    settings: {
+                        pov: localStorage.getItem('coneWorksDefaultPOV'),
+                        sensitivity: localStorage.getItem('coneWorksMouseSensitivity'),
+                        currency: localStorage.getItem('coneWorksCurrencyDisplay')
+                    }
+                };
+                const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'coneWorksBackup.json';
+                a.click();
+                URL.revokeObjectURL(url);
+                alert('Data backed up!');
+            }
+
+            function restoreData() {
+                document.getElementById('restoreInput').click();
+            }
+
+            function handleRestore(event) {
+                const file = event.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        try {
+                            const data = JSON.parse(e.target.result);
+                            if (data.accounts) localStorage.setItem('coneWorksAccounts', data.accounts);
+                            if (data.messages) localStorage.setItem('coneWorksMessages', data.messages);
+                            if (data.servers) localStorage.setItem('coneWorksServers', data.servers);
+                            if (data.settings) {
+                                if (data.settings.pov) localStorage.setItem('coneWorksDefaultPOV', data.settings.pov);
+                                if (data.settings.sensitivity) localStorage.setItem('coneWorksMouseSensitivity', data.settings.sensitivity);
+                                if (data.settings.currency) localStorage.setItem('coneWorksCurrencyDisplay', data.settings.currency);
+                            }
+                            accounts = JSON.parse(localStorage.getItem('coneWorksAccounts')) || {};
+                            messages = JSON.parse(localStorage.getItem('coneWorksMessages')) || [];
+                            servers = JSON.parse(localStorage.getItem('coneWorksServers')) || [];
+                            alert('Data restored! Try logging in.');
+                            console.log('Data restored');
+                        } catch (e) {
+                            console.error('Restore error:', e);
+                            alert('Error restoring data. Check console.');
+                        }
+                    };
+                    reader.readAsText(file);
+                }
+            }
+
+            function deleteAccount() {
+                try {
+                    const user = document.getElementById('deleteUsername').value.trim();
+                    const pass = document.getElementById('deletePassword').value;
+                    const userLower = user.toLowerCase();
+                    const matchedUser = Object.keys(accounts).find(u => u.toLowerCase() === userLower);
+                    if (matchedUser && matchedUser === username && accounts[matchedUser].password === pass) {
+                        delete accounts[matchedUser];
+                        localStorage.setItem('coneWorksAccounts', JSON.stringify(accounts));
+                        username = null;
+                        document.getElementById('deleteAccountBox').style.display = 'none';
+                        document.getElementById('settingsPage').style.display = 'none';
+                        document.getElementById('loginPage').style.display = 'block';
+                        document.getElementById('fullscreenBtn').style.display = 'block';
+                        alert('Account deleted!');
+                        console.log('Account deleted:', matchedUser);
+                    } else {
+                        alert('Invalid username or password!');
+                    }
+                } catch (e) {
+                    console.error('Delete account error:', e);
+                    alert('Error deleting account. Check console.');
+                }
+            }
+
+            function showDeleteAccount() {
+                document.getElementById('deleteAccountBox').style.display = 'block';
+                document.getElementById('fullscreenBtn').style.display = 'block';
+            }
+
+            function testMultiplayer() {
+                try {
+                    publicMessages = [];
+                    player = { x: 400, y: 300, z: 0, speed: 5, jumping: false, jumpHeight: 50 };
+                    document.getElementById('homePage').style.display = 'none';
+                    canvas.style.display = 'block';
+                    document.getElementById('fullscreenBtn').style.display = 'block';
+                    document.getElementById('backBtn').style.display = 'none';
+                    document.getElementById('homeBtn').style.display = 'block';
+                    document.getElementById('publicChat').style.display = 'block';
+                    startGame();
+                    console.log('Started Test Multiplayer');
+                } catch (e) {
+                    console.error('Test Multiplayer error:', e);
+                    alert('Error starting Test Multiplayer. Check console.');
+                }
+            }
+
+            function submitReport() {
+                try {
+                    if (username === 'conehead8654') {
+                        const reportedPlayer = document.getElementById('reportPlayer').value;
+                        alert(`Reported ${reportedPlayer}`);
+                        console.log('Reported player:', reportedPlayer);
+                        document.getElementById('reportBox').style.display = 'none';
+                    } else {
+                        alert('Only conehead8654 can report players!');
+                    }
+                } catch (e) {
+                    console.error('Submit report error:', e);
+                    alert('Error submitting report. Check console.');
+                }
+            }
+
+            function closeVote() {
+                document.getElementById('voteBox').style.display = 'none';
+            }
+
+            // Initialize
+            if (!accounts['conehead8654']) {
+                accounts['conehead8654'] = { password: 'Di@d09202015', friends: [], requestsSent: [], wins: 0, conecon: 100, equippedSkin: 'default-boy', equippedWeapon: 'fist' };
+                localStorage.setItem('coneWorksAccounts', JSON.stringify(accounts));
+            }
+            document.getElementById('versionDisplay').textContent = `Version ${version}`;
+            document.getElementById('fullscreenBtn').style.display = 'block';
+            updateConeconDisplay();
+            updateFriendList();
+            console.log('Game initialized, version:', version);
         } catch (e) {
             console.error('Script initialization error:', e);
-            alert('Error initializing game. Check console.');
+            alert('Error loading game. Check console.');
         }
     </script>
 </body>

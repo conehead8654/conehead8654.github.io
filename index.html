@@ -1,4 +1,56 @@
+<body style="background: #000000; margin: 0; overflow: hidden;">
+    <div id="loginBox" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #333; color: white; padding: 20px; z-index: 10002; display: block;">
+        <h2>Login</h2>
+        <input id="usernameInput" type="text" placeholder="Username" style="margin: 5px; padding: 5px;">
+        <input id="passwordInput" type="password" placeholder="Password" style="margin: 5px; padding: 5px;">
+        <button onclick="login()" style="background: #ff0000; color: white; padding: 8px 16px; border: 2px solid white; border-radius: 5px; cursor: pointer; margin: 5px;">Login</button>
+        <button onclick="signup()" style="background: #ff0000; color: white; padding: 8px 16px; border: 2px solid white; border-radius: 5px; cursor: pointer; margin: 5px;">Sign Up</button>
+    </div>
+    <canvas id="canvas" width="800" height="600" style="position: absolute; top: 0; left: 0; z-index: 1000; display: none;"></canvas>
+    <div id="ui" style="position: absolute; top: 0; left: 0; z-index: 10001; display: none;"></div>
+    <button id="fullscreenBtn" style="position: absolute; top: 10px; right: 10px; background: #ff0000; color: white; padding: 8px 16px; border: 2px solid white; border-radius: 5px; cursor: pointer; z-index: 15000; display: block;">Fullscreen</button>
+    <button id="leaveBtn" style="position: absolute; top: 50px; right: 10px; background: #ff0000; color: white; padding: 8px 16px; border: 2px solid white; border-radius: 5px; cursor: pointer; z-index: 15000; display: block;">Leave</button>
+    <div id="skinBox" style="display: none; position: absolute; top: 50px; left: 50px; background: #333; color: white; padding: 10px; z-index: 10002;">
+        <div id="skinList"></div>
+    </div>
+    <div id="shopBox" style="display: none; position: absolute; top: 50px; left: 50px; background: #333; color: white; padding: 10px; z-index: 10002;">
+        <div id="weaponList"></div>
+    </div>
+    <div id="reportBox" style="display: none; position: absolute; top: 50px; left: 50px; background: #333; color: white; padding: 10px; z-index: 10002;">
+        <select id="reportPlayer"></select>
+        <button onclick="submitReport()">Submit Report</button>
+    </div>
+    <div id="reviewReportsBox" style="display: none; position: absolute; top: 50px; left: 50px; background: #333; color: white; padding: 10px; z-index: 10002;">
+        <div id="reportList"></div>
+    </div>
+    <div id="playerListBox" style="display: none; position: absolute; top: 50px; left: 50px; background: #333; color: white; padding: 10px; z-index: 10002;">
+        <table id="playerList"></table>
+    </div>
+    <div id="publicChat" style="display: none; position: absolute; bottom: 10px; right: 10px; background: #333; color: white; padding: 10px; z-index: 10002;">
+        <div id="publicChatMessages" style="max-height: 200px; overflow-y: auto;"></div>
+        <input id="publicChatInput" type="text">
+        <button onclick="sendPublicMessage()">Send</button>
+    </div>
+    <div id="chatBox" style="display: none; position: absolute; bottom: 10px; left: 10px; background: #333; color: white; padding: 10px; z-index: 10002;">
+        <div id="chatMessages" style="max-height: 200px; overflow-y: auto;"></div>
+        <input id="chatInput" type="text">
+        <button onclick="sendMessage()">Send</button>
+    </div>
+    <div id="friendBox" style="display: none; position: absolute; top: 50px; left: 50px; background: #333; color: white; padding: 10px; z-index: 10002;">
+        <input id="friendSearch" type="text" oninput="updateFriendSuggestions()">
+        <div id="friendSuggestions"></div>
+        <button onclick="sendFriendRequest()">Send Friend Request</button>
+        <div id="friendList"></div>
+        <div id="friendRequests"></div>
+    </div>
+    <div id="voteBox" style="display: none; position: absolute; top: 50px; left: 50px; background: #333; color: white; padding: 10px; z-index: 10002;"></div>
+    <div id="coneconDisplay" style="position: absolute; top: 10px; left: 10px; color: white; z-index: 10001;"></div>
 <style>
+    body {
+        background: #000000;
+        margin: 0;
+        overflow: hidden;
+    }
     #fullscreenBtn, #leaveBtn {
         position: absolute;
         top: 10px;
@@ -27,11 +79,238 @@
         display: inline-block;
         margin: 5px;
     }
+    #canvas {
+        position: absolute;
+        top: 0;
+        left: 0;
+        z-index: 1000;
+        display: none;
+    }
+    #ui {
+        position: absolute;
+        top: 0;
+        left: 0;
+        z-index: 10001;
+    }
 </style>
 <script>
+const version = '3.5.2';
+const sessionId = Math.random().toString(36).slice(2);
+let username = null;
+let accounts = JSON.parse(localStorage.getItem(`coneWorksAccounts_${sessionId}`)) || {};
+let players = JSON.parse(localStorage.getItem(`coneWorksPlayers_${sessionId}`)) || {};
+let reports = JSON.parse(localStorage.getItem(`coneWorksReports_${sessionId}`)) || [];
+let bannedPlayers = JSON.parse(localStorage.getItem(`coneWorksBannedPlayers_${sessionId}`)) || [];
+let servers = JSON.parse(localStorage.getItem(`coneWorksServers_${sessionId}`)) || [{ name: 'default', mode: 'normal', players: [] }];
+let publicMessages = JSON.parse(localStorage.getItem(`coneWorksMessages_${sessionId}`)) || [];
+let messages = JSON.parse(localStorage.getItem(`coneWorksMessages_${sessionId}`)) || [];
+let friends = accounts[username]?.friends || [];
+let friendRequestsSent = accounts[username]?.requestsSent || [];
+let friendRequestsReceived = JSON.parse(localStorage.getItem(`coneWorksRequestsReceived_${sessionId}`))?.[username] || [];
+let conecon = accounts[username]?.conecon || 0;
+let equippedSkin = accounts[username]?.equippedSkin || 'default-boy';
+let equippedWeapon = accounts[username]?.equippedWeapon || 'fist';
+let pov = accounts[username]?.pov || 'third';
+let currentServer = servers[0];
+const skins = {
+    'default-boy': { cost: 0, color: [1, 0, 0] },
+    'blue-girl': { cost: 50, color: [0, 0, 1] },
+    'green-alien': { cost: 100, color: [0, 1, 0] }
+};
+const weapons = {
+    'fist': { cost: 0 },
+    'sword': { cost: 100 },
+    'gun': { cost: 200 }
+};
+const canvas = document.getElementById('canvas');
+const ctx = canvas ? canvas.getContext('2d') : null;
+const ui = document.getElementById('ui');
+const loginBox = document.getElementById('loginBox');
+if (!canvas || !ctx || !ui || !loginBox) {
+    console.error('Initialization error: Missing DOM elements', { canvas: !!canvas, ctx: !!ctx, ui: !!ui, loginBox: !!loginBox });
+    alert('Error: Missing canvas, UI, or login elements. Check console.');
+}
+
+function generateToken() {
+    return Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+}
+
+function login() {
+    try {
+        const usernameInput = document.getElementById('usernameInput');
+        const passwordInput = document.getElementById('passwordInput');
+        if (!usernameInput || !passwordInput) throw new Error('Login inputs not found');
+        const inputUsername = usernameInput.value.trim();
+        const password = passwordInput.value.trim();
+        if (!inputUsername || !password) {
+            alert('Please enter username and password!');
+            console.log('Login failed: Empty username or password');
+            return;
+        }
+        if (accounts[inputUsername] && accounts[inputUsername].password === password) {
+            username = inputUsername;
+            friends = accounts[username].friends || [];
+            friendRequestsSent = accounts[username].requestsSent || [];
+            friendRequestsReceived = JSON.parse(localStorage.getItem(`coneWorksRequestsReceived_${sessionId}`))?.[username] || [];
+            conecon = accounts[username].conecon || 0;
+            equippedSkin = accounts[username].equippedSkin || 'default-boy';
+            equippedWeapon = accounts[username].equippedWeapon || 'fist';
+            pov = accounts[username].pov || 'third';
+            const token = generateToken();
+            accounts[username].loginToken = token;
+            localStorage.setItem(`coneWorksAccounts_${sessionId}`, JSON.stringify(accounts));
+            localStorage.setItem(`coneWorksAutoSignin_${sessionId}`, JSON.stringify({ username, token }));
+            loginBox.style.display = 'none';
+            renderMainMenu();
+            updateConeconDisplay();
+            console.log('Login successful:', username);
+        } else {
+            alert('Invalid username or password!');
+            console.log('Login failed: Invalid credentials for', inputUsername);
+        }
+    } catch (e) {
+        console.error('Login error:', e);
+        alert('Error during login. Check console.');
+    }
+}
+
+function signup() {
+    try {
+        const usernameInput = document.getElementById('usernameInput');
+        const passwordInput = document.getElementById('passwordInput');
+        if (!usernameInput || !passwordInput) throw new Error('Signup inputs not found');
+        const inputUsername = usernameInput.value.trim();
+        const password = passwordInput.value.trim();
+        if (!inputUsername || !password) {
+            alert('Please enter username and password!');
+            console.log('Signup failed: Empty username or password');
+            return;
+        }
+        if (accounts[inputUsername]) {
+            alert('Username already taken!');
+            console.log('Signup failed: Username taken', inputUsername);
+            return;
+        }
+        accounts[inputUsername] = {
+            password,
+            friends: [],
+            requestsSent: [],
+            requestsReceived: [],
+            wins: 0,
+            conecon: 0,
+            equippedSkin: 'default-boy',
+            equippedWeapon: 'fist',
+            pov: 'third',
+            loginToken: generateToken()
+        };
+        username = inputUsername;
+        friends = [];
+        friendRequestsSent = [];
+        friendRequestsReceived = [];
+        conecon = 0;
+        equippedSkin = 'default-boy';
+        equippedWeapon = 'fist';
+        pov = 'third';
+        localStorage.setItem(`coneWorksAccounts_${sessionId}`, JSON.stringify(accounts));
+        localStorage.setItem(`coneWorksAutoSignin_${sessionId}`, JSON.stringify({ username, token: accounts[username].loginToken }));
+        loginBox.style.display = 'none';
+        renderMainMenu();
+        updateConeconDisplay();
+        console.log('Signup successful:', username);
+    } catch (e) {
+        console.error('Signup error:', e);
+        alert('Error during signup. Check console.');
+    }
+}
+
+function autoSignin() {
+    try {
+        const autoSigninData = JSON.parse(localStorage.getItem(`coneWorksAutoSignin_${sessionId}`));
+        if (autoSigninData && autoSigninData.username && autoSigninData.token) {
+            const user = accounts[autoSigninData.username];
+            if (user && user.loginToken === autoSigninData.token) {
+                username = autoSigninData.username;
+                friends = accounts[username].friends || [];
+                friendRequestsSent = accounts[username].requestsSent || [];
+                friendRequestsReceived = JSON.parse(localStorage.getItem(`coneWorksRequestsReceived_${sessionId}`))?.[username] || [];
+                conecon = accounts[username].conecon || 0;
+                equippedSkin = accounts[username].equippedSkin || 'default-boy';
+                equippedWeapon = accounts[username].equippedWeapon || 'fist';
+                pov = accounts[username].pov || 'third';
+                loginBox.style.display = 'none';
+                renderMainMenu();
+                updateConeconDisplay();
+                console.log('Auto-signin successful:', username);
+            } else {
+                console.log('Auto-signin failed: Invalid token or user');
+            }
+        } else {
+            console.log('Auto-signin failed: No cache found');
+        }
+    } catch (e) {
+        console.error('Auto-signin error:', e);
+        console.log('Auto-signin failed: Cache error');
+    }
+}
+
+function clearCache() {
+    try {
+        if (!username || username.toLowerCase() !== 'conehead8654') {
+            alert('Only conehead8654 can clear cache!');
+            console.log('Clear cache failed: Unauthorized user', username);
+            return;
+        }
+        localStorage.removeItem(`coneWorksAccounts_${sessionId}`);
+        localStorage.removeItem(`coneWorksPlayers_${sessionId}`);
+        localStorage.removeItem(`coneWorksReports_${sessionId}`);
+        localStorage.removeItem(`coneWorksBannedPlayers_${sessionId}`);
+        localStorage.removeItem(`coneWorksServers_${sessionId}`);
+        localStorage.removeItem(`coneWorksMessages_${sessionId}`);
+        localStorage.removeItem(`coneWorksRequestsReceived_${sessionId}`);
+        localStorage.removeItem(`coneWorksAutoSignin_${sessionId}`);
+        accounts = {};
+        players = {};
+        reports = [];
+        bannedPlayers = [];
+        servers = [{ name: 'default', mode: 'normal', players: [] }];
+        publicMessages = [];
+        messages = [];
+        friends = [];
+        friendRequestsSent = [];
+        friendRequestsReceived = [];
+        conecon = 0;
+        equippedSkin = 'default-boy';
+        equippedWeapon = 'fist';
+        pov = 'third';
+        currentServer = servers[0];
+        username = null;
+        loginBox.style.display = 'block';
+        ui.style.display = 'none';
+        canvas.style.display = 'none';
+        alert('Cache cleared!');
+        console.log('Cache cleared by:', username);
+    } catch (e) {
+        console.error('Clear cache error:', e);
+        alert('Error clearing cache. Check console.');
+    }
+}
+
+function updateConeconDisplay() {
+    try {
+        const coneconDisplay = document.getElementById('coneconDisplay');
+        if (!coneconDisplay) throw new Error('Conecon display element not found');
+        coneconDisplay.textContent = `Conecons: ${conecon}`;
+        console.log('Updated Conecon display:', conecon);
+    } catch (e) {
+        console.error('Update Conecon display error:', e);
+        alert('Error updating Conecon display. Check console.');
+    }
+}
+
 function toggleFullscreen() {
     try {
         const fullscreenBtn = document.getElementById('fullscreenBtn');
+        if (!fullscreenBtn) throw new Error('Fullscreen button not found');
         if (!document.fullscreenElement) {
             document.documentElement.requestFullscreen().then(() => {
                 fullscreenBtn.textContent = 'Exit Fullscreen';
@@ -57,6 +336,8 @@ function toggleFullscreen() {
 
 function renderMainMenu() {
     try {
+        if (!ui) throw new Error('UI element not found');
+        if (!username) throw new Error('Username not defined');
         ui.style.display = 'block';
         ui.innerHTML = `
             <button style="background: #ff0000; color: white; padding: 8px 16px; border: 2px solid white; border-radius: 5px; cursor: pointer; z-index: 10001; position: relative; display: inline-block; margin: 5px;" onclick="startGame()">Start Game</button>
@@ -69,8 +350,9 @@ function renderMainMenu() {
             <button style="background: #ff0000; color: white; padding: 8px 16px; border: 2px solid white; border-radius: 5px; cursor: pointer; z-index: 10001; position: relative; display: inline-block; margin: 5px;" onclick="toggleFriendBox()">Friends</button>
             <button style="background: #ff0000; color: white; padding: 8px 16px; border: 2px solid white; border-radius: 5px; cursor: pointer; z-index: 10001; position: relative; display: inline-block; margin: 5px;" onclick="testUI()">Test UI</button>
             <button style="background: #ff0000; color: white; padding: 8px 16px; border: 2px solid white; border-radius: 5px; cursor: pointer; z-index: 10001; position: relative; display: inline-block; margin: 5px;" onclick="testUI2()">Test UI 2</button>
+            ${username.toLowerCase() === 'conehead8654' ? '<button style="background: #ff0000; color: white; padding: 8px 16px; border: 2px solid white; border-radius: 5px; cursor: pointer; z-index: 10001; position: relative; display: inline-block; margin: 5px;" onclick="clearCache()">Clear Cache</button>' : ''}
         `;
-        console.log('Main menu rendered:', ui.innerHTML);
+        console.log('Main menu rendered for user:', username);
     } catch (e) {
         console.error('Render main menu error:', e);
         alert('Error rendering main menu. Check console.');
@@ -79,7 +361,9 @@ function renderMainMenu() {
 
 function closeVote() {
     try {
-        document.getElementById('voteBox').style.display = 'none';
+        const voteBox = document.getElementById('voteBox');
+        if (!voteBox) throw new Error('Vote box not found');
+        voteBox.style.display = 'none';
         console.log('Closed vote box');
     } catch (e) {
         console.error('Close vote error:', e);
@@ -89,7 +373,9 @@ function closeVote() {
 
 function startGame() {
     try {
-        console.log('Starting game');
+        if (!canvas || !ctx || !ui) throw new Error('Canvas or UI elements missing');
+        if (!username) throw new Error('Username not defined');
+        console.log('Starting game for user:', username);
         let player = {
             x: 400,
             y: 300,
@@ -107,7 +393,7 @@ function startGame() {
         players[username] = player;
         localStorage.setItem(`coneWorksPlayers_${sessionId}`, JSON.stringify(players));
         canvas.style.display = 'block';
-        ui.style.display = 'none'; // Hide main menu during game
+        ui.style.display = 'none';
         console.log('Game started, UI hidden');
         let keys = {};
 
@@ -188,30 +474,26 @@ function startGame() {
                 ctx.save();
                 ctx.translate(p.x, p.y - p.z);
 
-                // Jump animation: 30% vertical stretch
                 let scaleY = 1;
                 if (p.jumping) {
                     scaleY = p.jumpProgress < 0.5 ? 1 + p.jumpProgress * 0.3 : 1.3 - (p.jumpProgress - 0.5) * 0.3;
                 }
                 ctx.scale(1, scaleY);
 
-                // Walk animation: ±28° leg rotation
                 let legAngle = p.walkProgress ? Math.sin(p.walkProgress * Math.PI) * (28 * Math.PI / 180) : 0;
 
-                // Draw stick figure
                 ctx.fillStyle = skins[p.equippedSkin || 'default-boy'].color.map(c => c * 255).join(',');
                 ctx.beginPath();
-                ctx.arc(0, -20, 10, 0, Math.PI * 2); // Head
+                ctx.arc(0, -20, 10, 0, Math.PI * 2);
                 ctx.fill();
 
                 ctx.beginPath();
                 ctx.moveTo(0, -10);
-                ctx.lineTo(0, 10); // Body
+                ctx.lineTo(0, 10);
                 ctx.strokeStyle = ctx.fillStyle;
                 ctx.lineWidth = 5;
                 ctx.stroke();
 
-                // Arms
                 ctx.beginPath();
                 ctx.moveTo(0, -5);
                 ctx.lineTo(p.direction === 1 ? -15 : 15, 5);
@@ -219,7 +501,6 @@ function startGame() {
                 ctx.lineTo(p.direction === 1 ? 15 : -15, 5);
                 ctx.stroke();
 
-                // Legs with walk animation
                 ctx.save();
                 ctx.translate(0, 10);
                 ctx.rotate(legAngle);
@@ -238,7 +519,6 @@ function startGame() {
                 ctx.stroke();
                 ctx.restore();
 
-                // Nametag
                 ctx.fillStyle = 'white';
                 ctx.font = '12px Arial';
                 ctx.textAlign = 'center';
@@ -261,9 +541,11 @@ function startGame() {
 
 function openSkinShop() {
     try {
+        const skinBox = document.getElementById('skinBox');
         const skinList = document.getElementById('skinList');
+        if (!skinBox || !skinList) throw new Error('Skin shop elements not found');
         skinList.innerHTML = Object.keys(skins).map(s => `<div>${s} (${skins[s].cost} Conecons) <button onclick="buySkin('${s}')">Buy</button></div>`).join('');
-        document.getElementById('skinBox').style.display = 'block';
+        skinBox.style.display = 'block';
         console.log('Opened skin shop');
     } catch (e) {
         console.error('Open skin shop error:', e);
@@ -273,6 +555,7 @@ function openSkinShop() {
 
 function buySkin(skin) {
     try {
+        if (!accounts[username]) throw new Error('User account not found');
         if (conecon >= skins[skin].cost) {
             conecon -= skins[skin].cost;
             equippedSkin = skin;
@@ -295,9 +578,11 @@ function buySkin(skin) {
 
 function openWeaponShop() {
     try {
+        const shopBox = document.getElementById('shopBox');
         const weaponList = document.getElementById('weaponList');
+        if (!shopBox || !weaponList) throw new Error('Weapon shop elements not found');
         weaponList.innerHTML = Object.keys(weapons).map(w => `<div>${w} (${weapons[w].cost} Conecons) <button onclick="buyWeapon('${w}')">Buy</button></div>`).join('');
-        document.getElementById('shopBox').style.display = 'block';
+        shopBox.style.display = 'block';
         console.log('Opened weapon shop');
     } catch (e) {
         console.error('Open weapon shop error:', e);
@@ -307,6 +592,7 @@ function openWeaponShop() {
 
 function buyWeapon(weapon) {
     try {
+        if (!accounts[username]) throw new Error('User account not found');
         if (conecon >= weapons[weapon].cost) {
             conecon -= weapons[weapon].cost;
             equippedWeapon = weapon;
@@ -329,6 +615,7 @@ function buyWeapon(weapon) {
 
 function togglePOV() {
     try {
+        if (!accounts[username]) throw new Error('User account not found');
         pov = pov === 'third' ? 'first' : 'third';
         accounts[username].pov = pov;
         localStorage.setItem(`coneWorksAccounts_${sessionId}`, JSON.stringify(accounts));
@@ -342,9 +629,12 @@ function togglePOV() {
 
 function reportPlayerUI() {
     try {
+        const reportBox = document.getElementById('reportBox');
         const reportPlayer = document.getElementById('reportPlayer');
+        if (!reportBox || !reportPlayer) throw new Error('Report player elements not found');
+        if (!currentServer) throw new Error('Current server not defined');
         reportPlayer.innerHTML = currentServer.players.filter(p => p !== username).map(p => `<option value="${p}">${p}</option>`).join('');
-        document.getElementById('reportBox').style.display = 'block';
+        reportBox.style.display = 'block';
         console.log('Opened report player UI');
     } catch (e) {
         console.error('Report player UI error:', e);
@@ -354,7 +644,10 @@ function reportPlayerUI() {
 
 function submitReport() {
     try {
-        const reportedPlayer = document.getElementById('reportPlayer').value;
+        const reportPlayer = document.getElementById('reportPlayer');
+        if (!reportPlayer) throw new Error('Report player element not found');
+        if (!currentServer) throw new Error('Current server not defined');
+        const reportedPlayer = reportPlayer.value;
         if (reportedPlayer && reportedPlayer !== username) {
             reports.push({ reporter: username, reported: reportedPlayer, server: currentServer.name, timestamp: Date.now() });
             localStorage.setItem(`coneWorksReports_${sessionId}`, JSON.stringify(reports));
@@ -373,12 +666,13 @@ function submitReport() {
 
 function reviewReports() {
     try {
-        if (username.toLowerCase() !== 'conehead8654') {
+        if (!username || username.toLowerCase() !== 'conehead8654') {
             alert('Only conehead8654 can review reports!');
             console.log('Review reports failed: Unauthorized user', username);
             return;
         }
         const reportList = document.getElementById('reportList');
+        if (!reportList) throw new Error('Report list element not found');
         reportList.innerHTML = reports.map((r, i) => `<div>${r.reporter} reported ${r.reported} on ${r.server} <button onclick="banPlayer('${r.reported}', ${i})">Ban</button></div>`).join('');
         document.getElementById('reviewReportsBox').style.display = 'block';
         console.log('Opened review reports');
@@ -390,7 +684,7 @@ function reviewReports() {
 
 function banPlayer(player, reportIndex) {
     try {
-        if (username.toLowerCase() !== 'conehead8654') {
+        if (!username || username.toLowerCase() !== 'conehead8654') {
             alert('Only conehead8654 can ban players!');
             console.log('Ban failed: Unauthorized user', username);
             return;
@@ -417,11 +711,13 @@ function banPlayer(player, reportIndex) {
 
 function togglePlayerList() {
     try {
+        const playerListBox = document.getElementById('playerListBox');
         const playerList = document.getElementById('playerList');
+        if (!playerListBox || !playerList) throw new Error('Player list elements not found');
         playerList.innerHTML = Object.keys(accounts).map(u => {
             return `<tr><td>${u}</td><td>${accounts[u].wins || 0}</td><td>${accounts[u].conecon || 0}</td><td><button onclick="reportPlayerUI()">Report</button></td></tr>`;
         }).join('');
-        document.getElementById('playerListBox').style.display = document.getElementById('playerListBox').style.display === 'none' ? 'block' : 'none';
+        playerListBox.style.display = playerListBox.style.display === 'none' ? 'block' : 'none';
         console.log('Toggled player list');
     } catch (e) {
         console.error('Toggle player list error:', e);
@@ -432,6 +728,7 @@ function togglePlayerList() {
 function togglePublicChat() {
     try {
         const chat = document.getElementById('publicChat');
+        if (!chat) throw new Error('Public chat element not found');
         chat.style.display = chat.style.display === 'none' ? 'block' : 'none';
         if (chat.style.display === 'block') updatePublicChat();
         console.log('Toggled public chat:', chat.style.display);
@@ -444,8 +741,10 @@ function togglePublicChat() {
 function sendPublicMessage() {
     try {
         const input = document.getElementById('publicChatInput');
+        if (!input) throw new Error('Public chat input not found');
+        if (!currentServer) throw new Error('Current server not defined');
         const message = input.value.trim();
-        if (message && currentServer) {
+        if (message) {
             publicMessages.push({ sender: username, message, timestamp: Date.now() });
             localStorage.setItem(`coneWorksMessages_${sessionId}`, JSON.stringify(publicMessages));
             input.value = '';
@@ -461,6 +760,7 @@ function sendPublicMessage() {
 function updatePublicChat() {
     try {
         const messagesDiv = document.getElementById('publicChatMessages');
+        if (!messagesDiv) throw new Error('Public chat messages element not found');
         messagesDiv.innerHTML = publicMessages.map(m => `<div>${m.sender}: ${m.message}</div>`).join('');
         messagesDiv.scrollTop = messagesDiv.scrollHeight;
         console.log('Updated public chat');
@@ -473,6 +773,7 @@ function updatePublicChat() {
 function toggleChatBox() {
     try {
         const chatBox = document.getElementById('chatBox');
+        if (!chatBox) throw new Error('Chat box element not found');
         chatBox.style.display = chatBox.style.display === 'none' ? 'block' : 'none';
         if (chatBox.style.display === 'block') updateChat();
         console.log('Toggled chat box:', chatBox.style.display);
@@ -485,6 +786,7 @@ function toggleChatBox() {
 function sendMessage() {
     try {
         const input = document.getElementById('chatInput');
+        if (!input) throw new Error('Chat input not found');
         const message = input.value.trim();
         if (message) {
             messages.push({ sender: username, message, timestamp: Date.now() });
@@ -502,6 +804,7 @@ function sendMessage() {
 function updateChat() {
     try {
         const messagesDiv = document.getElementById('chatMessages');
+        if (!messagesDiv) throw new Error('Chat messages element not found');
         messagesDiv.innerHTML = messages.filter(m => friends.includes(m.sender) || m.sender === username).map(m => `<div>${m.sender}: ${m.message}</div>`).join('');
         messagesDiv.scrollTop = messagesDiv.scrollHeight;
         console.log('Updated friend chat');
@@ -514,6 +817,7 @@ function updateChat() {
 function toggleFriendBox() {
     try {
         const friendBox = document.getElementById('friendBox');
+        if (!friendBox) throw new Error('Friend box element not found');
         friendBox.style.display = friendBox.style.display === 'none' ? 'block' : 'none';
         if (friendBox.style.display === 'block') updateFriendList();
         console.log('Toggled friend box:', friendBox.style.display);
@@ -526,8 +830,9 @@ function toggleFriendBox() {
 function updateFriendList() {
     try {
         const friendList = document.getElementById('friendList');
-        friendList.innerHTML = friends.length ? friends.map(f => `<div>${f} <button onclick="removeFriend('${f}')">Remove</button></div>`).join('') : '<div>No friends yet!</div>';
         const requests = document.getElementById('friendRequests');
+        if (!friendList || !requests) throw new Error('Friend list or requests element not found');
+        friendList.innerHTML = friends.length ? friends.map(f => `<div>${f} <button onclick="removeFriend('${f}')">Remove</button></div>`).join('') : '<div>No friends yet!</div>';
         requests.innerHTML = friendRequestsReceived.length ? friendRequestsReceived.map(r => `<div>${r} <button onclick="acceptFriendRequest('${r}')">Accept</button> <button onclick="declineFriendRequest('${r}')">Decline</button></div>`).join('') : '<div>No friend requests!</div>';
         console.log('Updated friend list');
     } catch (e) {
@@ -538,7 +843,9 @@ function updateFriendList() {
 
 function sendFriendRequest() {
     try {
-        const friend = document.getElementById('friendSearch').value.trim();
+        const friendSearch = document.getElementById('friendSearch');
+        if (!friendSearch) throw new Error('Friend search element not found');
+        const friend = friendSearch.value.trim();
         const friendLower = friend.toLowerCase();
         let matchedFriend = Object.keys(accounts).find(u => u.toLowerCase() === friendLower);
         if (!matchedFriend || matchedFriend === username || friends.includes(matchedFriend) || friendRequestsSent.includes(matchedFriend)) {
@@ -553,7 +860,7 @@ function sendFriendRequest() {
         received[matchedFriend].push(username);
         localStorage.setItem(`coneWorksRequestsReceived_${sessionId}`, JSON.stringify(received));
         localStorage.setItem(`coneWorksAccounts_${sessionId}`, JSON.stringify(accounts));
-        document.getElementById('friendSearch').value = '';
+        friendSearch.value = '';
         updateFriendList();
         alert(`Friend request sent to ${matchedFriend}!`);
         console.log('Friend request sent to:', matchedFriend);
@@ -565,6 +872,7 @@ function sendFriendRequest() {
 
 function acceptFriendRequest(friend) {
     try {
+        if (!accounts[username] || !accounts[friend]) throw new Error('User or friend account not found');
         friends.push(friend);
         accounts[username].friends = friends;
         friendRequestsReceived = friendRequestsReceived.filter(r => r !== friend);
@@ -603,6 +911,7 @@ function declineFriendRequest(friend) {
 
 function removeFriend(friend) {
     try {
+        if (!accounts[username] || !accounts[friend]) throw new Error('User or friend account not found');
         friends = friends.filter(f => f !== friend);
         accounts[username].friends = friends;
         accounts[friend].friends = accounts[friend].friends.filter(f => f !== username);
@@ -618,15 +927,17 @@ function removeFriend(friend) {
 
 function updateFriendSuggestions() {
     try {
-        const search = document.getElementById('friendSearch').value.toLowerCase();
+        const friendSearch = document.getElementById('friendSearch');
         const suggestions = document.getElementById('friendSuggestions');
+        if (!friendSearch || !suggestions) throw new Error('Friend search or suggestions element not found');
+        const search = friendSearch.value.toLowerCase();
         suggestions.innerHTML = '';
         Object.keys(accounts).filter(u => u.toLowerCase().includes(search) && u !== username && !friends.includes(u) && !friendRequestsSent.includes(u)).slice(0, 5).forEach(u => {
             const div = document.createElement('div');
             div.className = 'suggestion';
             div.textContent = u;
             div.onclick = () => {
-                document.getElementById('friendSearch').value = u;
+                friendSearch.value = u;
                 updateFriendSuggestions();
             };
             suggestions.appendChild(div);
@@ -684,7 +995,6 @@ function testUI2() {
     }
 }
 
-// Initialize default admin account
 if (!accounts['conehead8654']) {
     accounts['conehead8654'] = {
         password: 'Di@d09202015',
@@ -695,16 +1005,16 @@ if (!accounts['conehead8654']) {
         conecon: 100,
         equippedSkin: 'default-boy',
         equippedWeapon: 'fist',
-        pov: 'third'
+        pov: 'third',
+        loginToken: generateToken()
     };
     localStorage.setItem(`coneWorksAccounts_${sessionId}`, JSON.stringify(accounts));
     console.log('Initialized default admin account: conehead8654');
 }
 
-// Start Conecon timer
 setInterval(() => {
     try {
-        if (currentServer) {
+        if (currentServer && username && accounts[username]) {
             conecon += 1;
             accounts[username].conecon = conecon;
             localStorage.setItem(`coneWorksAccounts_${sessionId}`, JSON.stringify(accounts));
@@ -717,5 +1027,9 @@ setInterval(() => {
     }
 }, 60000);
 
+// Run auto-signin on page load
+autoSignin();
+
 console.log('ConeWorks initialized, version:', version, 'Session:', sessionId);
 </script>
+</body>

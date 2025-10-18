@@ -1218,184 +1218,190 @@
                 updateFriendList();
                 alert(`Friend request sent to ${matchedFriend}!`);
                 console.log('Friend request sent to:', matchedFriend);
-            } tiles/acceptFriendRequest(friend) {
-                try {
-                    if (!accounts[username] || !accounts[friend]) throw new Error('User or friend account not found');
-                    friends.push(friend);
-                    accounts[username].friends = friends;
-                    friendRequestsReceived = friendRequestsReceived.filter(r => r !== friend);
-                    let received = JSON.parse(localStorage.getItem(`coneWorksRequestsReceived_${sessionId}`)) || {};
-                    received[username] = friendRequestsReceived;
-                    localStorage.setItem(`coneWorksRequestsReceived_${sessionId}`, JSON.stringify(received));
-                    accounts[friend].friends = accounts[friend].friends || [];
-                    accounts[friend].friends.push(username);
-                    accounts[friend].requestsSent = accounts[friend].requestsSent.filter(r => r !== username);
-                    localStorage.setItem(`coneWorksAccounts_${sessionId}`, JSON.stringify(accounts));
-                    updateFriendList();
-                    alert(`Accepted friend request from ${friend}!`);
-                    console.log('Accepted friend request from:', friend);
-                } catch (e) {
-                    console.error('Accept friend request error:', e);
-                    alert('Error accepting friend request. Check console.');
-                }
+            } catch (e) {
+                console.error('Send friend request error:', e);
+                alert('Error sending friend request. Check console.');
             }
+        }
 
-            function declineFriendRequest(friend) {
-                try {
-                    friendRequestsReceived = friendRequestsReceived.filter(r => r !== friend);
-                    let received = JSON.parse(localStorage.getItem(`coneWorksRequestsReceived_${sessionId}`)) || {};
-                    received[username] = friendRequestsReceived;
-                    localStorage.setItem(`coneWorksRequestsReceived_${sessionId}`, JSON.stringify(received));
-                    accounts[friend].requestsSent = accounts[friend].requestsSent.filter(r => r !== username);
-                    localStorage.setItem(`coneWorksAccounts_${sessionId}`, JSON.stringify(accounts));
-                    updateFriendList();
-                    alert(`Declined friend request from ${friend}!`);
-                    console.log('Declined friend request from:', friend);
-                } catch (e) {
-                    console.error('Decline friend request error:', e);
-                    alert('Error declining friend request. Check console.');
-                }
-            }
-
-            function removeFriend(friend) {
-                try {
-                    if (!accounts[username] || !accounts[friend]) throw new Error('User or friend account not found');
-                    friends = friends.filter(f => f !== friend);
-                    accounts[username].friends = friends;
-                    accounts[friend].friends = accounts[friend].friends.filter(f => f !== username);
-                    localStorage.setItem(`coneWorksAccounts_${sessionId}`, JSON.stringify(accounts));
-                    updateFriendList();
-                    alert(`Removed ${friend} from friends!`);
-                    console.log('Removed friend:', friend);
-                } catch (e) {
-                    console.error('Remove friend error:', e);
-                    alert('Error removing friend. Check console.');
-                }
-            }
-
-            function updateFriendSuggestions() {
-                try {
-                    const friendSearch = document.getElementById('friendSearch');
-                    const suggestions = document.getElementById('friendSuggestions');
-                    if (!friendSearch || !suggestions) throw new Error('Friend search or suggestions element not found');
-                    const search = friendSearch.value.toLowerCase();
-                    suggestions.innerHTML = '';
-                    Object.keys(accounts).filter(u => u.toLowerCase().includes(search) && u !== username && !friends.includes(u) && !friendRequestsSent.includes(u)).slice(0, 5).forEach(u => {
-                        const div = document.createElement('div');
-                        div.className = 'suggestion';
-                        div.textContent = u;
-                        div.style.cssText = 'cursor: pointer; padding: 5px; background: #333; margin: 2px; border-radius: 5px;';
-                        div.onclick = () => {
-                            friendSearch.value = u;
-                            updateFriendSuggestions();
-                        };
-                        suggestions.appendChild(div);
-                    });
-                    console.log('Updated friend suggestions');
-                } catch (e) {
-                    console.error('Update friend suggestions error:', e);
-                    alert('Error updating friend suggestions. Check console.');
-                }
-            }
-
-            function testMultiplayer() {
-                try {
-                    alert('Testing multiplayer: Players in session ' + sessionId + ': ' + Object.keys(players).length);
-                    console.log('Multiplayer test:', Object.keys(players), 'Session:', sessionId);
-                } catch (e) {
-                    console.error('Test multiplayer error:', e);
-                    alert('Error testing multiplayer. Check console.');
-                }
-            }
-
-            function testUI() {
-                try {
-                    console.log('Testing UI: Adding test button to body');
-                    const existingButton = document.getElementById('testButton');
-                    if (existingButton) existingButton.remove();
-                    const button = document.createElement('button');
-                    button.id = 'testButton';
-                    button.textContent = 'Test UI';
-                    button.style.cssText = 'background: linear-gradient(to right, #ff6b6b, #ff8e53); color: white; padding: 8px 16px; border: none; border-radius: 5px; cursor: pointer; z-index: 3000; position: absolute; top: 90px; right: 10px; font-family: Arial, sans-serif; transition: transform 0.2s, box-shadow 0.2s;';
-                    button.onmouseover = () => button.style.transform = 'scale(1.05)';
-                    button.onmouseout = () => button.style.transform = 'scale(1)';
-                    button.onclick = () => alert('Test UI button clicked!');
-                    document.body.appendChild(button);
-                    console.log('Test UI button added');
-                } catch (e) {
-                    console.error('Test UI error:', e);
-                    alert('Error testing UI. Check console.');
-                }
-            }
-
-            function testUI2() {
-                try {
-                    console.log('Testing UI 2: Adding second test button to body');
-                    const existingButton = document.getElementById('testButton2');
-                    if (existingButton) existingButton.remove();
-                    const button = document.createElement('button');
-                    button.id = 'testButton2';
-                    button.textContent = 'Test UI 2';
-                    button.style.cssText = 'background: linear-gradient(to right, #ff6b6b, #ff8e53); color: white; padding: 8px 16px; border: none; border-radius: 5px; cursor: pointer; z-index: 3000; position: absolute; top: 130px; right: 10px; font-family: Arial, sans-serif; transition: transform 0.2s, box-shadow 0.2s;';
-                    button.onmouseover = () => button.style.transform = 'scale(1.05)';
-                    button.onmouseout = () => button.style.transform = 'scale(1)';
-                    button.onclick = () => alert('Test UI 2 button clicked!');
-                    document.body.appendChild(button);
-                    console.log('Test UI 2 button added');
-                } catch (e) {
-                    console.error('Test UI 2 error:', e);
-                    alert('Error testing UI 2. Check console.');
-                }
-            }
-
-            function closeVote() {
-                try {
-                    const voteBox = document.getElementById('voteBox');
-                    if (!voteBox) throw new Error('Vote box not found');
-                    voteBox.style.display = 'none';
-                    console.log('Closed vote box');
-                } catch (e) {
-                    console.error('Close vote error:', e);
-                    alert('Error closing vote box. Check console.');
-                }
-            }
-
-            // Initialize
-            if (!accounts['conehead8654']) {
-                accounts['conehead8654'] = {
-                    password: 'Di@d09202015',
-                    friends: [],
-                    requestsSent: [],
-                    requestsReceived: [],
-                    wins: 0,
-                    conecon: 100,
-                    equippedSkin: 'default-boy',
-                    equippedWeapon: 'fist',
-                    pov: 'third',
-                    loginToken: generateToken()
-                };
+        function acceptFriendRequest(friend) {
+            try {
+                if (!accounts[username] || !accounts[friend]) throw new Error('User or friend account not found');
+                friends.push(friend);
+                accounts[username].friends = friends;
+                friendRequestsReceived = friendRequestsReceived.filter(r => r !== friend);
+                let received = JSON.parse(localStorage.getItem(`coneWorksRequestsReceived_${sessionId}`)) || {};
+                received[username] = friendRequestsReceived;
+                localStorage.setItem(`coneWorksRequestsReceived_${sessionId}`, JSON.stringify(received));
+                accounts[friend].friends = accounts[friend].friends || [];
+                accounts[friend].friends.push(username);
+                accounts[friend].requestsSent = accounts[friend].requestsSent.filter(r => r !== username);
                 localStorage.setItem(`coneWorksAccounts_${sessionId}`, JSON.stringify(accounts));
-                console.log('Initialized default admin account: conehead8654');
+                updateFriendList();
+                alert(`Accepted friend request from ${friend}!`);
+                console.log('Accepted friend request from:', friend);
+            } catch (e) {
+                console.error('Accept friend request error:', e);
+                alert('Error accepting friend request. Check console.');
             }
+        }
 
-            setInterval(() => {
-                try {
-                    if (currentServer && username && accounts[username]) {
-                        conecon += 1;
-                        accounts[username].conecon = conecon;
-                        localStorage.setItem(`coneWorksAccounts_${sessionId}`, JSON.stringify(accounts));
-                        updateConeconDisplay();
-                        console.log('Conecon incremented:', conecon);
-                    }
-                } catch (e) {
-                    console.error('Conecon timer error:', e);
-                    alert('Error updating Conecons. Check console.');
+        function declineFriendRequest(friend) {
+            try {
+                friendRequestsReceived = friendRequestsReceived.filter(r => r !== friend);
+                let received = JSON.parse(localStorage.getItem(`coneWorksRequestsReceived_${sessionId}`)) || {};
+                received[username] = friendRequestsReceived;
+                localStorage.setItem(`coneWorksRequestsReceived_${sessionId}`, JSON.stringify(received));
+                accounts[friend].requestsSent = accounts[friend].requestsSent.filter(r => r !== username);
+                localStorage.setItem(`coneWorksAccounts_${sessionId}`, JSON.stringify(accounts));
+                updateFriendList();
+                alert(`Declined friend request from ${friend}!`);
+                console.log('Declined friend request from:', friend);
+            } catch (e) {
+                console.error('Decline friend request error:', e);
+                alert('Error declining friend request. Check console.');
+            }
+        }
+
+        function removeFriend(friend) {
+            try {
+                if (!accounts[username] || !accounts[friend]) throw new Error('User or friend account not found');
+                friends = friends.filter(f => f !== friend);
+                accounts[username].friends = friends;
+                accounts[friend].friends = accounts[friend].friends.filter(f => f !== username);
+                localStorage.setItem(`coneWorksAccounts_${sessionId}`, JSON.stringify(accounts));
+                updateFriendList();
+                alert(`Removed ${friend} from friends!`);
+                console.log('Removed friend:', friend);
+            } catch (e) {
+                console.error('Remove friend error:', e);
+                alert('Error removing friend. Check console.');
+            }
+        }
+
+        function updateFriendSuggestions() {
+            try {
+                const friendSearch = document.getElementById('friendSearch');
+                const suggestions = document.getElementById('friendSuggestions');
+                if (!friendSearch || !suggestions) throw new Error('Friend search or suggestions element not found');
+                const search = friendSearch.value.toLowerCase();
+                suggestions.innerHTML = '';
+                Object.keys(accounts).filter(u => u.toLowerCase().includes(search) && u !== username && !friends.includes(u) && !friendRequestsSent.includes(u)).slice(0, 5).forEach(u => {
+                    const div = document.createElement('div');
+                    div.className = 'suggestion';
+                    div.textContent = u;
+                    div.style.cssText = 'cursor: pointer; padding: 5px; background: #333; margin: 2px; border-radius: 5px;';
+                    div.onclick = () => {
+                        friendSearch.value = u;
+                        updateFriendSuggestions();
+                    };
+                    suggestions.appendChild(div);
+                });
+                console.log('Updated friend suggestions');
+            } catch (e) {
+                console.error('Update friend suggestions error:', e);
+                alert('Error updating friend suggestions. Check console.');
+            }
+        }
+
+        function testMultiplayer() {
+            try {
+                alert('Testing multiplayer: Players in session ' + sessionId + ': ' + Object.keys(players).length);
+                console.log('Multiplayer test:', Object.keys(players), 'Session:', sessionId);
+            } catch (e) {
+                console.error('Test multiplayer error:', e);
+                alert('Error testing multiplayer. Check console.');
+            }
+        }
+
+        function testUI() {
+            try {
+                console.log('Testing UI: Adding test button to body');
+                const existingButton = document.getElementById('testButton');
+                if (existingButton) existingButton.remove();
+                const button = document.createElement('button');
+                button.id = 'testButton';
+                button.textContent = 'Test UI';
+                button.style.cssText = 'background: linear-gradient(to right, #ff6b6b, #ff8e53); color: white; padding: 8px 16px; border: none; border-radius: 5px; cursor: pointer; z-index: 3000; position: absolute; top: 90px; right: 10px; font-family: Arial, sans-serif; transition: transform 0.2s, box-shadow 0.2s;';
+                button.onmouseover = () => button.style.transform = 'scale(1.05)';
+                button.onmouseout = () => button.style.transform = 'scale(1)';
+                button.onclick = () => alert('Test UI button clicked!');
+                document.body.appendChild(button);
+                console.log('Test UI button added');
+            } catch (e) {
+                console.error('Test UI error:', e);
+                alert('Error testing UI. Check console.');
+            }
+        }
+
+        function testUI2() {
+            try {
+                console.log('Testing UI 2: Adding second test button to body');
+                const existingButton = document.getElementById('testButton2');
+                if (existingButton) existingButton.remove();
+                const button = document.createElement('button');
+                button.id = 'testButton2';
+                button.textContent = 'Test UI 2';
+                button.style.cssText = 'background: linear-gradient(to right, #ff6b6b, #ff8e53); color: white; padding: 8px 16px; border: none; border-radius: 5px; cursor: pointer; z-index: 3000; position: absolute; top: 130px; right: 10px; font-family: Arial, sans-serif; transition: transform 0.2s, box-shadow 0.2s;';
+                button.onmouseover = () => button.style.transform = 'scale(1.05)';
+                button.onmouseout = () => button.style.transform = 'scale(1)';
+                button.onclick = () => alert('Test UI 2 button clicked!');
+                document.body.appendChild(button);
+                console.log('Test UI 2 button added');
+            } catch (e) {
+                console.error('Test UI 2 error:', e);
+                alert('Error testing UI 2. Check console.');
+            }
+        }
+
+        function closeVote() {
+            try {
+                const voteBox = document.getElementById('voteBox');
+                if (!voteBox) throw new Error('Vote box not found');
+                voteBox.style.display = 'none';
+                console.log('Closed vote box');
+            } catch (e) {
+                console.error('Close vote error:', e);
+                alert('Error closing vote box. Check console.');
+            }
+        }
+
+        // Initialize
+        if (!accounts['conehead8654']) {
+            accounts['conehead8654'] = {
+                password: 'Di@d09202015',
+                friends: [],
+                requestsSent: [],
+                requestsReceived: [],
+                wins: 0,
+                conecon: 100,
+                equippedSkin: 'default-boy',
+                equippedWeapon: 'fist',
+                pov: 'third',
+                loginToken: generateToken()
+            };
+            localStorage.setItem(`coneWorksAccounts_${sessionId}`, JSON.stringify(accounts));
+            console.log('Initialized default admin account: conehead8654');
+        }
+
+        setInterval(() => {
+            try {
+                if (currentServer && username && accounts[username]) {
+                    conecon += 1;
+                    accounts[username].conecon = conecon;
+                    localStorage.setItem(`coneWorksAccounts_${sessionId}`, JSON.stringify(accounts));
+                    updateConeconDisplay();
+                    console.log('Conecon incremented:', conecon);
                 }
-            }, 60000);
+            } catch (e) {
+                console.error('Conecon timer error:', e);
+                alert('Error updating Conecons. Check console.');
+            }
+        }, 60000);
 
-            document.getElementById('versionDisplay').textContent = `Version ${version}`;
-            autoSignin();
-            console.log('ConeWorks initialized, version:', version, 'Session:', sessionId);
-        </script>
-    </body>
+        document.getElementById('versionDisplay').textContent = `Version ${version}`;
+        autoSignin();
+        console.log('ConeWorks initialized, version:', version, 'Session:', sessionId);
+    </script>
+</body>
 </html>

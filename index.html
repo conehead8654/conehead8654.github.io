@@ -232,7 +232,6 @@
         <h2>Main Menu</h2>
         <button onclick="loadServerPage()">Join Server</button>
         <button onclick="document.getElementById('createServerPage').style.display='block'; document.getElementById('homePage').style.display='none'">Create Server</button>
-        <button onclick="toggleFriendBox()">Chat & Friends</button>
         <button onclick="loadSettingsPage()">Settings</button>
     </div>
     <div id="serverPage">
@@ -294,7 +293,7 @@
     </div>
     <div id="publicChat">
         <div id="publicChatMessages"></div>
-        <input id="publicChatInput" type="text" placeholder="Server chat..." onkeydown="if(event.key === 'Enter') sendPublicMessage()">
+        <input id="publicChatInput" type="text" placeholder="Public chat..." onkeydown="if(event.key === 'Enter') sendPublicMessage()">
     </div>
     <div id="chatBox">
         <div id="chatMessages"></div>
@@ -494,12 +493,13 @@
                 createServerPage.style.display = 'none';
                 settingsPage.style.display = 'none';
                 canvas.style.display = 'none';
-                ui.style.display = 'none';
-                document.getElementById('fullscreenBtn').style.display = 'none';
+                ui.style.display = 'block'; // Show UI on home page
+                document.getElementById('fullscreenBtn').style.display = 'block';
                 document.getElementById('leaveBtn').style.display = 'none';
                 document.getElementById('publicChat').style.display = 'none';
                 homePage.style.display = 'block';
-                console.log('Loaded home page');
+                renderMainMenu(); // Render UI buttons on home page
+                console.log('Loaded home page with UI');
             } catch (e) {
                 console.error('Load home page error:', e);
                 alert('Error loading home page. Check console.');
@@ -558,11 +558,12 @@
                 currentServer.players.push(username);
                 localStorage.setItem(`coneWorksServers_${sessionId}`, JSON.stringify(servers));
                 serverPage.style.display = 'none';
-                ui.style.display = 'block';
-                document.getElementById('fullscreenBtn').style.display = 'block';
-                document.getElementById('leaveBtn').style.display = 'block';
-                renderMainMenu();
+                homePage.style.display = 'block';
+                document.getElementById('publicChat').style.display = 'block';
+                updatePublicChat();
                 console.log('Joined server:', currentServer.name);
+                // Start game in multiplayer mode
+                startGame(true);
             } catch (e) {
                 console.error('Join server error:', e);
                 alert('Error joining server. Check console.');
@@ -680,8 +681,6 @@
                 players = {};
                 localStorage.setItem(`coneWorksPlayers_${sessionId}`, JSON.stringify(players));
                 canvas.style.display = 'none';
-                ui.style.display = 'none';
-                document.getElementById('fullscreenBtn').style.display = 'none';
                 document.getElementById('leaveBtn').style.display = 'none';
                 document.getElementById('publicChat').style.display = 'none';
                 loadHomePage();
@@ -698,7 +697,7 @@
                 if (!username) throw new Error('Username not defined');
                 ui.style.display = 'block';
                 ui.innerHTML = `
-                    <button onclick="startGame()">Start Game</button>
+                    <button onclick="startGame(false)">Start Game</button>
                     <button onclick="openSkinShop()">Skin Shop</button>
                     <button onclick="openWeaponShop()">Weapon Shop</button>
                     <button onclick="togglePlayerList()">Player List</button>
@@ -718,12 +717,11 @@
             }
         }
 
-        function startGame() {
+        function startGame(isMultiplayer = false) {
             try {
                 if (!canvas || !ctx || !ui) throw new Error('Canvas or UI elements missing');
                 if (!username) throw new Error('Username not defined');
-                if (!currentServer) throw new Error('No server selected');
-                console.log('Starting game for user:', username, 'on server:', currentServer.name);
+                console.log('Starting game for user:', username, 'Multiplayer:', isMultiplayer);
                 let player = {
                     x: 400,
                     y: 300,
@@ -744,7 +742,10 @@
                 ui.style.display = 'block';
                 document.getElementById('fullscreenBtn').style.display = 'block';
                 document.getElementById('leaveBtn').style.display = 'block';
-                document.getElementById('publicChat').style.display = 'block';
+                if (isMultiplayer && currentServer) {
+                    document.getElementById('publicChat').style.display = 'block';
+                    updatePublicChat();
+                }
                 console.log('Game started, UI shown');
                 let keys = {};
 
@@ -760,7 +761,7 @@
                         if (e.key === 'c') {
                             togglePublicChat();
                         }
-                        if (e.key === 'e' && currentServer.mode === 'fight') {
+                        if (e.key === 'e' && (!isMultiplayer || (currentServer && currentServer.mode === 'fight'))) {
                             console.log('Attack initiated:', username);
                         }
                     }
@@ -986,8 +987,8 @@
                 const reportBox = document.getElementById('reportBox');
                 const reportPlayer = document.getElementById('reportPlayer');
                 if (!reportBox || !reportPlayer) throw new Error('Report player elements not found');
-                if (!currentServer) throw new Error('Current server not defined');
-                reportPlayer.innerHTML = currentServer.players.filter(p => p !== username).map(p => `<option value="${p}">${p}</option>`).join('');
+                // Show all players except self, even outside server context
+                reportPlayer.innerHTML = Object.keys(accounts).filter(p => p !== username).map(p => `<option value="${p}">${p}</option>`).join('');
                 reportBox.style.display = 'block';
                 console.log('Opened report player UI');
             } catch (e) {
@@ -1000,10 +1001,9 @@
             try {
                 const reportPlayer = document.getElementById('reportPlayer');
                 if (!reportPlayer) throw new Error('Report player element not found');
-                if (!currentServer) throw new Error('Current server not defined');
                 const reportedPlayer = reportPlayer.value;
                 if (reportedPlayer && reportedPlayer !== username) {
-                    reports.push({ reporter: username, reported: reportedPlayer, server: currentServer.name, timestamp: Date.now() });
+                    reports.push({ reporter: username, reported: reportedPlayer, server: currentServer ? currentServer.name : 'none', timestamp: Date.now() });
                     localStorage.setItem(`coneWorksReports_${sessionId}`, JSON.stringify(reports));
                     document.getElementById('reportBox').style.display = 'none';
                     alert(`Reported ${reportedPlayer}!`);
@@ -1096,7 +1096,6 @@
             try {
                 const input = document.getElementById('publicChatInput');
                 if (!input) throw new Error('Public chat input not found');
-                if (!currentServer) throw new Error('Current server not defined');
                 const message = input.value.trim();
                 if (message) {
                     publicMessages.push({ sender: username, message, timestamp: Date.now() });
@@ -1386,7 +1385,7 @@
 
         setInterval(() => {
             try {
-                if (currentServer && username && accounts[username]) {
+                if (username && accounts[username]) {
                     conecon += 1;
                     accounts[username].conecon = conecon;
                     localStorage.setItem(`coneWorksAccounts_${sessionId}`, JSON.stringify(accounts));

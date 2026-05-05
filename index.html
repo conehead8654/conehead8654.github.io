@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>VM</title>
+  <style>
+    body { margin:0; background:#111; }
+    iframe {
+      width:100vw;
+      height:100vh;
+      border:none;
+    }
+  </style>
+</head>
+<body>
+
+<iframe
+  id="vm"
+  allow="fullscreen; autoplay; clipboard-read; clipboard-write; gamepad; pointer-lock"
+></iframe>
+
+<script>
+fetch("http://localhost:3000/session")
+  .then(r => r.json())
+  .then(d => {
+    const frame = document.getElementById("vm");
+    frame.src = d.url;
+
+    // helps with focus so typing works immediately
+    frame.onload = () => frame.focus();
+  });
+</script>
+
+</body>
+</html>

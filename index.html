@@ -1,17 +1,34 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>VM</title>
+  <meta charset="UTF-8" />
+  <title>School VM</title>
   <style>
-    body { margin:0; background:#111; }
+    body {
+      margin: 0;
+      background: #111;
+      overflow: hidden;
+    }
+
     iframe {
-      width:100vw;
-      height:100vh;
-      border:none;
+      width: 100vw;
+      height: 100vh;
+      border: none;
+    }
+
+    #loading {
+      position: absolute;
+      color: white;
+      font-family: Arial, sans-serif;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
     }
   </style>
 </head>
 <body>
+
+<div id="loading">Loading VM...</div>
 
 <iframe
   id="vm"
@@ -19,15 +36,26 @@
 ></iframe>
 
 <script>
-fetch("http://localhost:3000/session")
-  .then(r => r.json())
-  .then(d => {
-    const frame = document.getElementById("vm");
-    frame.src = d.url;
+async function loadVM() {
+  try {
+    const res = await fetch("http://localhost:3000/session");
+    const data = await res.json();
 
-    // helps with focus so typing works immediately
-    frame.onload = () => frame.focus();
-  });
+    const iframe = document.getElementById("vm");
+    iframe.src = data.url;
+
+    iframe.onload = () => {
+      document.getElementById("loading").style.display = "none";
+      iframe.focus();
+    };
+
+  } catch (err) {
+    document.getElementById("loading").innerText =
+      "Failed to load VM (backend not running)";
+  }
+}
+
+loadVM();
 </script>
 
 </body>
